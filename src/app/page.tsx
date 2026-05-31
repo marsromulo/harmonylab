@@ -1,65 +1,161 @@
 import Image from "next/image";
+import Link from "next/link";
+import { connection } from "next/server";
+import { ProductCard } from "@/components/ProductCard";
+import { SiteFooter } from "@/components/SiteFooter";
+import { SiteHeader } from "@/components/SiteHeader";
+import { getFeaturedProducts } from "@/lib/products";
 
-export default function Home() {
+export default async function Home() {
+  await connection();
+  const featuredProducts = await getFeaturedProducts();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <div className="page">
+      <SiteHeader active="home" />
+
+      <main>
+        <section className="hero">
+          <div className="hero-copy">
+            <p className="eyebrow">VITAMIN C SKINCARE</p>
+            <h1>
+              Glow Naturally,
+              <br />
+              Everyday.
+            </h1>
+            <p className="lead">
+              Brightening skincare essentials infused with
+              <br />
+              Vitamin C to reveal a healthier, radiant you.
+            </p>
+            <Link className="btn" href="/products">
+              SHOP NOW
+            </Link>
+            <div className="benefits mini">
+              <div>
+                <span>✧</span>
+                <b>Brighten</b>
+                <small>Improve dull skin</small>
+              </div>
+              <div>
+                <span>♧</span>
+                <b>Hydrate</b>
+                <small>Deep moisture</small>
+              </div>
+              <div>
+                <span>♨</span>
+                <b>Nourish</b>
+                <small>Healthy glowing skin</small>
+              </div>
+            </div>
+          </div>
+          <Image
+            className="hero-img"
+            src="/asset/hero-products.png"
+            alt="Vitamin C skincare products"
+            width={669}
+            height={471}
+            priority
+          />
+        </section>
+
+        <section className="featured" id="products">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">OUR BESTSELLERS</p>
+              <h2>Our Featured Products</h2>
+            </div>
+            <Link className="outline" href="/products">
+              VIEW ALL
+            </Link>
+          </div>
+          <button className="arrow left" type="button" aria-label="Previous products">
+            ‹
+          </button>
+          <button className="arrow right" type="button" aria-label="Next products">
+            ›
+          </button>
+          <div className="grid products">
+            {featuredProducts.map((product) => (
+              <ProductCard product={product} key={product.id} />
+            ))}
+          </div>
+        </section>
+
+        <section className="strip">
+          <div>
+            <span>◎</span>
+            <b>Brightening</b>
+            <p>
+              Vitamin C helps improve
+              <br />
+              dull skin and uneven tone.
+            </p>
+          </div>
+          <div>
+            <span>♧</span>
+            <b>Hydrating</b>
+            <p>
+              Deep hydration for
+              <br />
+              soft and supple skin.
+            </p>
+          </div>
+          <div>
+            <span>♢</span>
+            <b>Anti-Aging</b>
+            <p>
+              Reduce the look of fine lines
+              <br />
+              and wrinkles.
+            </p>
+          </div>
+          <div>
+            <span>☘</span>
+            <b>Gentle Formula</b>
+            <p>
+              Suitable for all skin types,
+              <br />
+              even sensitive skin.
+            </p>
+          </div>
+        </section>
+
+        <section className="about">
+          <Image
+            src="/asset/about-products.png"
+            alt="Vitamin C skincare set"
+            width={445}
+            height={253}
+          />
+          <div className="about-copy">
+            <p className="eyebrow">ABOUT BEAUTY HOST</p>
+            <h2>
+              Skincare that cares
+              <br />
+              for your natural beauty.
+            </h2>
+            <p>
+              At Beauty Host, we believe healthy, radiant skin starts with high-quality
+              ingredients and the right care. Our Vitamin C collection is specially formulated
+              to brighten, hydrate, and protect your skin every day.
+            </p>
+            <Link className="outline" href="/products">
+              LEARN MORE
+            </Link>
+          </div>
+        </section>
       </main>
+
+      <SiteFooter />
+      <Image
+        className="phone"
+        src="/asset/phone-preview.png"
+        alt="Mobile preview"
+        width={225}
+        height={614}
+        aria-hidden="true"
+      />
     </div>
   );
 }
