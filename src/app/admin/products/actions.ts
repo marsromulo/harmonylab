@@ -18,6 +18,12 @@ type ProductImageInsertRow = {
   is_primary: boolean;
 };
 
+type ProductImageRecord = {
+  id: string;
+  image_url: string;
+  storage_path: string | null;
+};
+
 const allowedDescriptionTags = new Set(["a", "b", "br", "em", "h3", "i", "li", "ol", "p", "strong", "u", "ul"]);
 
 function slugify(value: string) {
@@ -32,6 +38,13 @@ function slugify(value: string) {
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function getStrings(formData: FormData, key: string) {
+  return formData
+    .getAll(key)
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .map((value) => value.trim());
 }
 
 function getInteger(formData: FormData, key: string, fallback = 0) {
@@ -246,7 +259,7 @@ async function uploadProductImages({
   return rows;
 }
 
-async function setProductImageUrl(supabase: AdminSupabaseClient, productId: string, imageUrl: string) {
+async function setProductImageUrl(supabase: AdminSupabaseClient, productId: string, imageUrl: string | null) {
   const { error } = await supabase.from("products").update({ image_url: imageUrl }).eq("id", productId);
 
   if (error) {
@@ -274,6 +287,103 @@ async function deleteProductStorageImages(supabase: AdminSupabaseClient, product
   if (storageError) {
     throw new Error(`Unable to delete product image files: ${storageError.message}`);
   }
+}
+
+async function deleteSelectedProductImages({
+  supabase,
+  productId,
+  imageIds,
+}: {
+  supabase: AdminSupabaseClient;
+  productId: string;
+  imageIds: string[];
+}) {
+  if (imageIds.length === 0) {
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("product_images")
+    .select("id,storage_path")
+    .eq("product_id", productId)
+    .in("id", imageIds);
+
+  if (error) {
+    throw new Error(`Unable to load product images for deletion: ${error.message}`);
+  }
+
+  const storagePaths = (data ?? [])
+    .map((image) => image.storage_path)
+    .filter((storagePath): storagePath is string => Boolean(storagePath));
+
+  if (storagePaths.length > 0) {
+    const { error: storageError } = await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove(storagePaths);
+
+    if (storageError) {
+      throw new Error(`Unable to delete product image files: ${storageError.message}`);
+    }
+  }
+
+  const recordIds = (data ?? []).map((image) => image.id);
+
+  if (recordIds.length > 0) {
+    const { error: deleteError } = await supabase.from("product_images").delete().eq("product_id", productId).in("id", recordIds);
+
+    if (deleteError) {
+      throw new Error(`Unable to delete product image records: ${deleteError.message}`);
+    }
+  }
+}
+
+async function syncExistingProductImageOrder({
+  supabase,
+  productId,
+  orderedImageIds,
+}: {
+  supabase: AdminSupabaseClient;
+  productId: string;
+  orderedImageIds: string[];
+}) {
+  const uniqueOrderedImageIds = [...new Set(orderedImageIds)];
+
+  if (uniqueOrderedImageIds.length === 0) {
+    await clearPrimaryProductImages(supabase, productId);
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("product_images")
+    .select("id,image_url,storage_path")
+    .eq("product_id", productId)
+    .in("id", uniqueOrderedImageIds);
+
+  if (error) {
+    throw new Error(`Unable to load product images for ordering: ${error.message}`);
+  }
+
+  const imagesById = new Map((data as ProductImageRecord[] | null)?.map((image) => [image.id, image]) ?? []);
+  const existingOrderedImages = uniqueOrderedImageIds
+    .map((imageId) => imagesById.get(imageId))
+    .filter((image): image is ProductImageRecord => Boolean(image));
+
+  await clearPrimaryProductImages(supabase, productId);
+
+  for (const [index, image] of existingOrderedImages.entries()) {
+    const { error: updateError } = await supabase
+      .from("product_images")
+      .update({
+        is_primary: index === 0,
+        sort_order: (index + 1) * 10,
+      })
+      .eq("product_id", productId)
+      .eq("id", image.id);
+
+    if (updateError) {
+      throw new Error(`Unable to update product image order: ${updateError.message}`);
+    }
+  }
+
+  return existingOrderedImages[0] ?? null;
 }
 
 export async function createProductAction(formData: FormData) {
@@ -326,11 +436,27 @@ export async function updateProductAction(id: string, formData: FormData) {
   const { supabase } = await requireAdmin();
   const payload = getProductPayload(formData);
   const imageFiles = getImageFiles(formData);
+  const deletedImageIds = getStrings(formData, "deleted_image_ids");
+  const orderedExistingImageIds = getStrings(formData, "existing_image_order").filter(
+    (imageId) => !deletedImageIds.includes(imageId),
+  );
   const { error } = await supabase.from("products").update(payload).eq("id", id);
 
   if (error) {
     throw new Error(`Unable to update product: ${error.message}`);
   }
+
+  await deleteSelectedProductImages({
+    supabase,
+    productId: id,
+    imageIds: deletedImageIds,
+  });
+
+  const primaryExistingImage = await syncExistingProductImageOrder({
+    supabase,
+    productId: id,
+    orderedImageIds: orderedExistingImageIds,
+  });
 
   const nextImageSortOrder = imageFiles.length > 0 ? await getNextImageSortOrder(supabase, id) : 10;
   const uploadedImages = await uploadProductImages({
@@ -339,11 +465,15 @@ export async function updateProductAction(id: string, formData: FormData) {
     productName: payload.name,
     files: imageFiles,
     startSortOrder: nextImageSortOrder,
-    makeFirstPrimary: imageFiles.length > 0,
+    makeFirstPrimary: !primaryExistingImage && imageFiles.length > 0,
   });
 
-  if (uploadedImages[0]?.image_url) {
+  if (primaryExistingImage?.image_url) {
+    await setProductImageUrl(supabase, id, primaryExistingImage.image_url);
+  } else if (uploadedImages[0]?.image_url) {
     await setProductImageUrl(supabase, id, uploadedImages[0].image_url);
+  } else if (deletedImageIds.length > 0) {
+    await setProductImageUrl(supabase, id, null);
   }
 
   revalidatePath("/");

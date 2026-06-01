@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { StoreProduct } from "@/lib/products";
+import type { StoreProduct, StoreProductImage } from "@/lib/products";
 import { RichTextEditor } from "./RichTextEditor";
 
 type ProductFormProps = {
@@ -27,8 +27,11 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [productName, setProductName] = useState(product?.name ?? "");
   const [slug, setSlug] = useState(product?.slug ?? "");
+  const [currentImages, setCurrentImages] = useState<StoreProductImage[]>(product?.images ?? []);
+  const [deletedImageIds, setDeletedImageIds] = useState<string[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [draggedCurrentImageIndex, setDraggedCurrentImageIndex] = useState<number | null>(null);
   const [draggedPreviewIndex, setDraggedPreviewIndex] = useState<number | null>(null);
 
   const previewUrls = useMemo(() => selectedFiles.map((file) => URL.createObjectURL(file)), [selectedFiles]);
@@ -82,8 +85,33 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
     setDraggedPreviewIndex(null);
   }
 
+  function removeCurrentImage(imageId: string) {
+    setDeletedImageIds((imageIds) => (imageIds.includes(imageId) ? imageIds : [...imageIds, imageId]));
+    setCurrentImages((images) => images.filter((image) => image.id !== imageId));
+  }
+
+  function reorderCurrentImages(fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex) {
+      setDraggedCurrentImageIndex(null);
+      return;
+    }
+
+    const nextImages = [...currentImages];
+    const [movedImage] = nextImages.splice(fromIndex, 1);
+    nextImages.splice(toIndex, 0, movedImage);
+    setCurrentImages(nextImages);
+    setDraggedCurrentImageIndex(null);
+  }
+
   return (
     <form action={action} className="admin-product-form">
+      {currentImages.map((image) => (
+        <input key={image.id} name="existing_image_order" type="hidden" value={image.id} />
+      ))}
+      {deletedImageIds.map((imageId) => (
+        <input key={imageId} name="deleted_image_ids" type="hidden" value={imageId} />
+      ))}
+
       <div className="admin-form-grid">
         <label>
           Product Name
@@ -145,19 +173,50 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
 
       <input name="image_url" type="hidden" defaultValue={product?.imageUrl ?? ""} />
 
-      {product?.images.length ? (
+      {currentImages.length ? (
         <div className="admin-current-images">
-          <span>Current Images</span>
+          <span>Saved Images</span>
           <div className="admin-image-preview-grid">
-            {product.images.map((image) => (
-              <div className="admin-image-preview" key={image.id}>
+            {currentImages.map((image, index) => (
+              <div
+                className={draggedCurrentImageIndex === index ? "admin-image-preview dragging" : "admin-image-preview"}
+                draggable
+                key={image.id}
+                onDragStart={(event) => {
+                  setDraggedCurrentImageIndex(index);
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("text/plain", String(index));
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                }}
+                onDragEnd={() => setDraggedCurrentImageIndex(null)}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  const fromIndex = Number.parseInt(event.dataTransfer.getData("text/plain"), 10);
+
+                  if (Number.isFinite(fromIndex)) {
+                    reorderCurrentImages(fromIndex, index);
+                  }
+                }}
+              >
                 <span
                   className="admin-image-preview-thumb"
                   style={{ backgroundImage: `url(${image.imageUrl})` }}
                   role="img"
-                  aria-label={image.altText ?? product.name}
+                  aria-label={image.altText ?? productName}
                 />
-                {image.isPrimary ? <small>Primary</small> : null}
+                {index === 0 ? <small className="admin-image-primary-badge">Hero</small> : null}
+                <button
+                  className="admin-image-remove"
+                  aria-label={`Remove ${image.altText ?? productName}`}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    removeCurrentImage(image.id);
+                  }}
+                />
               </div>
             ))}
           </div>

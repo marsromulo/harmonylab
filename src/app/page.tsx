@@ -8,7 +8,7 @@ import { getFeaturedProducts } from "@/lib/products";
 
 export default async function Home() {
   await connection();
-  const featuredProducts = await getFeaturedProducts();
+  const featuredProducts = await getFeaturedProducts(3);
 
   return (
     <div className="page">
@@ -62,12 +62,8 @@ export default async function Home() {
         <section className="featured" id="products">
           <div className="section-head">
             <div>
-              <p className="eyebrow">OUR BESTSELLERS</p>
-              <h2>Our Featured Products</h2>
+              <h2>Our Products</h2>
             </div>
-            <Link className="outline" href="/products">
-              VIEW ALL
-            </Link>
           </div>
           <button className="arrow left" type="button" aria-label="Previous products">
             ‹
