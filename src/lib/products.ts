@@ -209,6 +209,43 @@ export async function getFeaturedProducts(limit = 4): Promise<StoreProduct[]> {
   return getProducts(limit);
 }
 
+export async function getProductBySlug(slug: string): Promise<StoreProduct | null> {
+  try {
+    const supabase = createSupabaseServerClient();
+    const productResult = await supabase
+      .from("products")
+      .select(productSelect)
+      .eq("slug", slug)
+      .eq("is_active", true)
+      .maybeSingle();
+    let product = productResult.data as ProductRow | null;
+    let productError = productResult.error;
+
+    if (productError) {
+      const retry = await supabase
+        .from("products")
+        .select(baseProductSelect)
+        .eq("slug", slug)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      product = retry.data as ProductRow | null;
+      productError = retry.error;
+    }
+
+    if (productError) {
+      console.warn("Supabase product detail query failed, using fallback product:", productError.message);
+      return fallbackProducts.find((fallbackProduct) => fallbackProduct.slug === slug) ?? null;
+    }
+
+    return product ? mapProductRow(product) : fallbackProducts.find((fallbackProduct) => fallbackProduct.slug === slug) ?? null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.warn("Unable to load Supabase product detail, using fallback product:", message);
+    return fallbackProducts.find((fallbackProduct) => fallbackProduct.slug === slug) ?? null;
+  }
+}
+
 export async function getAdminProducts(limit = 100): Promise<StoreProduct[]> {
   const supabase = await createSupabaseAuthServerClient();
   const productsResult = await supabase
