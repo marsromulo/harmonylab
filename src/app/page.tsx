@@ -125,14 +125,14 @@ export default async function Home() {
             height={253}
           />
           <div className="about-copy">
-            <p className="eyebrow">ABOUT BEAUTY HOST</p>
+            <p className="eyebrow">ABOUT HARMONY LAB</p>
             <h2>
               Skincare that cares
               <br />
               for your natural beauty.
             </h2>
             <p>
-              At Beauty Host, we believe healthy, radiant skin starts with high-quality
+              At Harmony Lab, we believe healthy, radiant skin starts with high-quality
               ingredients and the right care. Our Vitamin C collection is specially formulated
               to brighten, hydrate, and protect your skin every day.
             </p>
