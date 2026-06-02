@@ -1,8 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
+import { getCartSummary } from "@/lib/cart";
 
 type SiteHeaderProps = {
-  active?: "home" | "products" | "faq" | "shipping" | "contact";
+  active?: "home" | "products" | "faq" | "shipping" | "contact" | "account";
 };
 
 const navItems = [
@@ -13,7 +14,9 @@ const navItems = [
   { key: "contact", label: "Contact Us", href: "/contact-us" },
 ] as const;
 
-export function SiteHeader({ active = "home" }: SiteHeaderProps) {
+export async function SiteHeader({ active = "home" }: SiteHeaderProps) {
+  const cart = await getCartSummary();
+
   return (
     <header className="nav">
       <Link className="brand" href="/">
@@ -38,10 +41,32 @@ export function SiteHeader({ active = "home" }: SiteHeaderProps) {
         ))}
       </nav>
       <div className="icons" aria-label="Shop tools">
-        <span className="search" aria-hidden="true" />
-        <span className="bag" aria-label="Cart with 1 item">
-          <i>1</i>
-        </span>
+        <Link className={active === "account" ? "account-link active" : "account-link"} href="/account" aria-label="Account">
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            width="25"
+            height="25"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          >
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21c1.6-4 4.2-6 8-6s6.4 2 8 6" />
+          </svg>
+        </Link>
+        <Link
+          className="bag-link"
+          href="/cart"
+          aria-label={`Cart with ${cart.itemCount} item${cart.itemCount === 1 ? "" : "s"}`}
+          data-cart-animation-target="true"
+        >
+          <span className="bag" aria-hidden="true">
+            <i>{cart.itemCount}</i>
+          </span>
+        </Link>
       </div>
     </header>
   );

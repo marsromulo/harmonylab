@@ -246,6 +246,47 @@ export async function getProductBySlug(slug: string): Promise<StoreProduct | nul
   }
 }
 
+export async function getProductsByIds(ids: string[]): Promise<StoreProduct[]> {
+  const uniqueIds = [...new Set(ids)].filter(Boolean);
+
+  if (uniqueIds.length === 0) {
+    return [];
+  }
+
+  try {
+    const supabase = createSupabaseServerClient();
+    const productsResult = await supabase
+      .from("products")
+      .select(productSelect)
+      .in("id", uniqueIds)
+      .eq("is_active", true);
+    let products = productsResult.data as ProductRow[] | null;
+    let productsError = productsResult.error;
+
+    if (productsError) {
+      const retry = await supabase.from("products").select(baseProductSelect).in("id", uniqueIds).eq("is_active", true);
+      products = retry.data as ProductRow[] | null;
+      productsError = retry.error;
+    }
+
+    if (productsError) {
+      console.warn("Supabase cart products query failed, using fallback products:", productsError.message);
+      return fallbackProducts.filter((product) => uniqueIds.includes(product.id));
+    }
+
+    const mappedProducts = (products ?? []).map(mapProductRow);
+    const fallbackMatches = fallbackProducts.filter(
+      (product) => uniqueIds.includes(product.id) && !mappedProducts.some((mappedProduct) => mappedProduct.id === product.id),
+    );
+
+    return [...mappedProducts, ...fallbackMatches];
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.warn("Unable to load cart products, using fallback products:", message);
+    return fallbackProducts.filter((product) => uniqueIds.includes(product.id));
+  }
+}
+
 export async function getAdminProducts(limit = 100): Promise<StoreProduct[]> {
   const supabase = await createSupabaseAuthServerClient();
   const productsResult = await supabase

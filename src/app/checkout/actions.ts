@@ -1,0 +1,133 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { clearCart, getCartSummary } from "@/lib/cart";
+import { ensureCustomerProfile, upsertDefaultCustomerAddress } from "@/lib/customers";
+import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
+
+function getString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function getOrderNumber() {
+  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const randomPart = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `HL-${datePart}-${randomPart}`;
+}
+
+function normalizeReferralCode(value: string) {
+  return value.replace(/[^\w-]/g, "").toUpperCase().slice(0, 40);
+}
+
+export async function createCheckoutOrderAction(formData: FormData) {
+  const cart = await getCartSummary();
+
+  if (cart.lines.length === 0) {
+    redirect("/cart");
+  }
+
+  const supabase = await createSupabaseAuthServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/account?error=login-invalid");
+  }
+
+  const firstName = getString(formData, "first_name");
+  const lastName = getString(formData, "last_name");
+  const fullName = [firstName, lastName].filter(Boolean).join(" ");
+  const phone = getString(formData, "phone");
+  const email = user.email;
+  const shippingAddressLine1 = getString(formData, "shipping_address_line1");
+  const shippingAddressLine2 = getString(formData, "shipping_address_line2");
+  const shippingCity = getString(formData, "shipping_city");
+  const shippingRegion = getString(formData, "shipping_region");
+  const shippingPostalCode = getString(formData, "shipping_postal_code");
+  const shippingCountry = getString(formData, "shipping_country") || "Hong Kong";
+  const deliveryNotes = getString(formData, "delivery_notes");
+  const referralCode = normalizeReferralCode(getString(formData, "referral_code"));
+
+  if (!firstName || !lastName || !shippingAddressLine1 || !shippingCity) {
+    redirect("/checkout?error=shipping-invalid");
+  }
+
+  const customer = await ensureCustomerProfile(user, { firstName, fullName, lastName, phone });
+  await upsertDefaultCustomerAddress(customer.id, {
+    firstName,
+    lastName,
+    phone: phone || null,
+    addressLine1: shippingAddressLine1,
+    addressLine2: shippingAddressLine2 || null,
+    city: shippingCity,
+    region: shippingRegion || null,
+    postalCode: shippingPostalCode || null,
+    country: shippingCountry,
+  });
+
+  const currency = cart.lines[0]?.product.currency ?? "HKD";
+  const shippingCents = 0;
+  const discountCents = 0;
+  const totalCents = Math.max(cart.subtotalCents + shippingCents - discountCents, 0);
+  const orderNumber = getOrderNumber();
+  let referralOwnerCustomerId: string | null = null;
+
+  if (referralCode) {
+    const { data, error } = await supabase.rpc("get_referral_owner_customer_id", { referral_code: referralCode });
+
+    if (error) {
+      console.warn("Unable to resolve referral code:", error.message);
+    } else if (typeof data === "string" && data !== customer.id) {
+      referralOwnerCustomerId = data;
+    }
+  }
+
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .insert({
+      order_number: orderNumber,
+      customer_id: customer.id,
+      customer_email: email,
+      customer_name: fullName || customer.fullName || user.email,
+      currency,
+      delivery_notes: deliveryNotes || null,
+      shipping_address_line1: shippingAddressLine1,
+      shipping_address_line2: shippingAddressLine2 || null,
+      shipping_city: shippingCity,
+      shipping_country: shippingCountry,
+      shipping_postal_code: shippingPostalCode || null,
+      shipping_region: shippingRegion || null,
+      referral_code_entered: referralCode || null,
+      referral_owner_customer_id: referralOwnerCustomerId,
+      subtotal_cents: cart.subtotalCents,
+      shipping_cents: shippingCents,
+      discount_cents: discountCents,
+      total_cents: totalCents,
+    })
+    .select("id,order_number")
+    .single();
+
+  if (orderError) {
+    throw new Error(`Unable to create order: ${orderError.message}`);
+  }
+
+  const { error: itemError } = await supabase.from("order_items").insert(
+    cart.lines.map((line) => ({
+      order_id: order.id,
+      product_id: line.product.id,
+      product_name: line.product.name,
+      quantity: line.quantity,
+      unit_price_cents: line.product.priceCents,
+      line_total_cents: line.lineTotalCents,
+    })),
+  );
+
+  if (itemError) {
+    throw new Error(`Unable to create order items: ${itemError.message}`);
+  }
+
+  await clearCart();
+  redirect(`/checkout/success?order=${encodeURIComponent(order.order_number)}`);
+}

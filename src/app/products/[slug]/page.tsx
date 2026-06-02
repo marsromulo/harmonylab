@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { AddToCartForm } from "@/components/AddToCartForm";
 import { ProductImageGallery } from "@/components/ProductImageGallery";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -58,15 +59,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             {product.description ? (
               <div className="product-detail-description" dangerouslySetInnerHTML={{ __html: product.description }} />
             ) : null}
-            <button className="product-detail-cart" type="button">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M6 6h15l-2 8H8L6 6Z" />
-                <path d="M6 6 5 3H2" />
-                <circle cx="9" cy="20" r="1.5" />
-                <circle cx="18" cy="20" r="1.5" />
-              </svg>
-              <span>ADD TO CART</span>
-            </button>
+            <AddToCartForm buttonClassName="product-detail-cart" productId={product.id} showQuantity />
           </div>
         </section>
       </main>
