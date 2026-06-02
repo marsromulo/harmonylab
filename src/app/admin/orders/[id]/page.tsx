@@ -29,7 +29,7 @@ export default async function AdminOrderDetailPage({ params }: AdminOrderDetailP
     notFound();
   }
 
-  const { customer, items, order, referralOwner } = details;
+  const { customer, items, order, referralMember, referralOwner } = details;
 
   return (
     <AdminShell active="orders">
@@ -86,7 +86,9 @@ export default async function AdminOrderDetailPage({ params }: AdminOrderDetailP
             <div>
               <dt>Owner</dt>
               <dd>
-                {referralOwner ? (
+                {referralMember ? (
+                  referralMember.fullName
+                ) : referralOwner ? (
                   <Link className="admin-record-link" href={`/admin/customers/${referralOwner.id}`}>
                     {getCustomerLabel(referralOwner.fullName, referralOwner.email)}
                   </Link>
@@ -97,7 +99,11 @@ export default async function AdminOrderDetailPage({ params }: AdminOrderDetailP
             </div>
             <div>
               <dt>Owner code</dt>
-              <dd>{referralOwner?.referralId ?? "None"}</dd>
+              <dd>{referralMember?.referralCode ?? referralOwner?.referralId ?? "None"}</dd>
+            </div>
+            <div>
+              <dt>Owner type</dt>
+              <dd>{referralMember ? "Member" : referralOwner ? "Customer" : "None"}</dd>
             </div>
             <div>
               <dt>Points awarded</dt>

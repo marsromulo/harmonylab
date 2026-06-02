@@ -16,6 +16,7 @@ export type StoreOrder = {
   totalCents: number;
   referralCodeEntered: string | null;
   referralOwnerCustomerId: string | null;
+  referralOwnerMemberId: string | null;
   referralPointsAwarded: number;
   deliveryNotes: string | null;
   shippingAddressLine1: string | null;
@@ -59,6 +60,7 @@ type StoreOrderRow = {
   total_cents: number;
   referral_code_entered: string | null;
   referral_owner_customer_id: string | null;
+  referral_owner_member_id: string | null;
   referral_points_awarded: number;
   delivery_notes: string | null;
   shipping_address_line1: string | null;
@@ -90,6 +92,21 @@ type RelatedCustomerRow = {
   referral_id: string | null;
 };
 
+type RelatedMemberRow = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  phone: string | null;
+  referral_code: string;
+};
+
+export type OrderRelatedMember = {
+  id: string;
+  fullName: string;
+  phone: string | null;
+  referralCode: string;
+};
+
 const orderSelect = [
   "id",
   "order_number",
@@ -104,6 +121,7 @@ const orderSelect = [
   "total_cents",
   "referral_code_entered",
   "referral_owner_customer_id",
+  "referral_owner_member_id",
   "referral_points_awarded",
   "delivery_notes",
   "shipping_address_line1",
@@ -141,6 +159,7 @@ function mapOrder(row: StoreOrderRow): StoreOrder {
     totalCents: row.total_cents,
     referralCodeEntered: row.referral_code_entered,
     referralOwnerCustomerId: row.referral_owner_customer_id,
+    referralOwnerMemberId: row.referral_owner_member_id,
     referralPointsAwarded: row.referral_points_awarded,
     deliveryNotes: row.delivery_notes,
     shippingAddressLine1: row.shipping_address_line1,
@@ -176,6 +195,15 @@ function mapRelatedCustomer(row: RelatedCustomerRow): OrderRelatedCustomer {
     email: row.email,
     fullName: getRelatedCustomerName(row),
     referralId: row.referral_id,
+  };
+}
+
+function mapRelatedMember(row: RelatedMemberRow): OrderRelatedMember {
+  return {
+    id: row.id,
+    fullName: [row.first_name, row.last_name].filter(Boolean).join(" "),
+    phone: row.phone,
+    referralCode: row.referral_code,
   };
 }
 
@@ -247,6 +275,7 @@ export async function getAdminOrderDetails(orderId: string) {
     { data: items, error: itemError },
     { data: customer, error: customerError },
     { data: referralOwner, error: referralOwnerError },
+    { data: referralMember, error: referralMemberError },
   ] = await Promise.all([
     supabase
       .from("order_items")
@@ -267,6 +296,13 @@ export async function getAdminOrderDetails(orderId: string) {
           .eq("id", mappedOrder.referralOwnerCustomerId)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    mappedOrder.referralOwnerMemberId
+      ? supabase
+          .from("members")
+          .select("id,first_name,last_name,phone,referral_code")
+          .eq("id", mappedOrder.referralOwnerMemberId)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
 
   if (itemError) {
@@ -281,10 +317,15 @@ export async function getAdminOrderDetails(orderId: string) {
     throw new Error(`Unable to load referral owner: ${referralOwnerError.message}`);
   }
 
+  if (referralMemberError) {
+    throw new Error(`Unable to load referral member: ${referralMemberError.message}`);
+  }
+
   return {
     customer: customer ? mapRelatedCustomer(customer as unknown as RelatedCustomerRow) : null,
     items: ((items ?? []) as unknown as StoreOrderItemRow[]).map(mapOrderItem),
     order: mappedOrder,
+    referralMember: referralMember ? mapRelatedMember(referralMember as unknown as RelatedMemberRow) : null,
     referralOwner: referralOwner ? mapRelatedCustomer(referralOwner as unknown as RelatedCustomerRow) : null,
   };
 }

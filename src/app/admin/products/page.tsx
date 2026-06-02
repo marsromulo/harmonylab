@@ -44,6 +44,7 @@ export default async function AdminProductsPage() {
               <th>Product</th>
               <th>Slug</th>
               <th>Price</th>
+              <th>NUC Points</th>
               <th>Inventory</th>
               <th>Status</th>
               <th>Actions</th>
@@ -71,6 +72,7 @@ export default async function AdminProductsPage() {
                 </td>
                 <td>{product.slug}</td>
                 <td>{formatProductPrice(product)}</td>
+                <td>{product.nucPoints.toFixed(2)}</td>
                 <td>{product.inventoryQuantity}</td>
                 <td>
                   <span className={product.isActive ? "admin-status active" : "admin-status inactive"}>

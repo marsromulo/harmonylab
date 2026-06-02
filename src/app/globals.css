@@ -1042,6 +1042,8 @@ body {
 }
 
 .account-form input,
+.account-form select,
+.account-form textarea,
 .checkout-form input,
 .checkout-form select,
 .checkout-form textarea {
@@ -1051,6 +1053,15 @@ body {
   font: inherit;
   padding: 11px 12px;
   width: 100%;
+}
+
+.account-form select {
+  appearance: auto;
+  background: #fff;
+}
+
+.account-form textarea {
+  resize: vertical;
 }
 
 .checkout-form select {
@@ -1111,6 +1122,11 @@ body {
   gap: 16px;
 }
 
+.account-addresses {
+  display: grid;
+  gap: 16px;
+}
+
 .account-orders-head {
   align-items: center;
   display: flex;
@@ -1130,6 +1146,94 @@ body {
 .account-order-list {
   display: grid;
   gap: 10px;
+}
+
+.account-address-list {
+  display: grid;
+  gap: 10px;
+}
+
+.account-address-card,
+.account-address-create {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.account-address-card summary,
+.account-address-create summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  list-style: none;
+}
+
+.account-address-card summary::-webkit-details-marker,
+.account-address-create summary::-webkit-details-marker {
+  display: none;
+}
+
+.account-address-card summary b,
+.account-address-card summary small,
+.account-address-create summary {
+  display: block;
+}
+
+.account-address-card summary b,
+.account-address-create summary {
+  color: #161616;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.account-address-card summary small {
+  color: #625b54;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 5px;
+}
+
+.account-address-card summary em {
+  background: #fff7ef;
+  border-radius: 999px;
+  color: var(--orange);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  padding: 4px 8px;
+}
+
+.account-address-form {
+  border-top: 1px solid var(--line);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.account-checkbox-row {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.account-checkbox-row input {
+  width: auto;
+}
+
+.account-address-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.account-delete-address {
+  margin-top: 10px;
+}
+
+.checkout-address-fields {
+  display: grid;
+  gap: 14px;
 }
 
 .account-order-card {
@@ -2465,6 +2569,77 @@ body {
   font-weight: 700;
   height: 32px;
   padding: 0 11px;
+}
+
+.admin-members-create {
+  margin-bottom: 16px;
+}
+
+.admin-members-create h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+.admin-member-form {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-member-form.compact {
+  border-top: 1px solid #eee;
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.admin-member-form label {
+  color: #2a2a2a;
+  display: grid;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-member-form input {
+  border: 1px solid #e1ddd8;
+  border-radius: 6px;
+  color: #1c1c1c;
+  font: inherit;
+  padding: 10px 11px;
+  width: 100%;
+}
+
+.admin-member-form input:focus {
+  border-color: var(--admin-orange);
+  box-shadow: 0 0 0 3px rgba(255, 118, 0, 0.12);
+  outline: none;
+}
+
+.admin-inline-edit {
+  min-width: 220px;
+}
+
+.admin-inline-edit summary {
+  color: var(--admin-orange);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  list-style: none;
+}
+
+.admin-inline-edit summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-inline-edit form + form {
+  margin-top: 8px;
+}
+
+.admin-delete-form {
+  border-top: 1px solid #eee;
+  margin-top: 16px;
+  padding-top: 14px;
 }
 
 .admin-product-form {

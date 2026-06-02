@@ -48,6 +48,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
   const shippingPostalCode = getString(formData, "shipping_postal_code");
   const shippingCountry = getString(formData, "shipping_country") || "Hong Kong";
   const deliveryNotes = getString(formData, "delivery_notes");
+  const customerAddressId = getString(formData, "customer_address_id");
   const referralCode = normalizeReferralCode(getString(formData, "referral_code"));
 
   if (!firstName || !lastName || !shippingAddressLine1 || !shippingCity) {
@@ -55,7 +56,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
   }
 
   const customer = await ensureCustomerProfile(user, { firstName, fullName, lastName, phone });
-  await upsertDefaultCustomerAddress(customer.id, {
+  const addressPayload = {
     firstName,
     lastName,
     phone: phone || null,
@@ -65,7 +66,42 @@ export async function createCheckoutOrderAction(formData: FormData) {
     region: shippingRegion || null,
     postalCode: shippingPostalCode || null,
     country: shippingCountry,
-  });
+  };
+
+  if (customerAddressId) {
+    const { error: defaultResetError } = await supabase
+      .from("customer_addresses")
+      .update({ is_default: false })
+      .eq("customer_id", customer.id)
+      .neq("id", customerAddressId);
+
+    if (defaultResetError) {
+      throw new Error(`Unable to update default address: ${defaultResetError.message}`);
+    }
+
+    const { error: addressUpdateError } = await supabase
+      .from("customer_addresses")
+      .update({
+        first_name: addressPayload.firstName,
+        last_name: addressPayload.lastName,
+        phone: addressPayload.phone,
+        address_line1: addressPayload.addressLine1,
+        address_line2: addressPayload.addressLine2,
+        city: addressPayload.city,
+        region: addressPayload.region,
+        postal_code: addressPayload.postalCode,
+        country: addressPayload.country,
+        is_default: true,
+      })
+      .eq("id", customerAddressId)
+      .eq("customer_id", customer.id);
+
+    if (addressUpdateError) {
+      throw new Error(`Unable to update customer address: ${addressUpdateError.message}`);
+    }
+  } else {
+    await upsertDefaultCustomerAddress(customer.id, addressPayload);
+  }
 
   const currency = cart.lines[0]?.product.currency ?? "HKD";
   const shippingCents = 0;
@@ -73,14 +109,27 @@ export async function createCheckoutOrderAction(formData: FormData) {
   const totalCents = Math.max(cart.subtotalCents + shippingCents - discountCents, 0);
   const orderNumber = getOrderNumber();
   let referralOwnerCustomerId: string | null = null;
+  let referralOwnerMemberId: string | null = null;
 
   if (referralCode) {
-    const { data, error } = await supabase.rpc("get_referral_owner_customer_id", { referral_code: referralCode });
+    const { data: memberId, error: memberError } = await supabase.rpc("get_referral_owner_member_id", {
+      p_referral_code: referralCode,
+    });
 
-    if (error) {
-      console.warn("Unable to resolve referral code:", error.message);
-    } else if (typeof data === "string" && data !== customer.id) {
-      referralOwnerCustomerId = data;
+    if (memberError) {
+      console.warn("Unable to resolve member referral code:", memberError.message);
+    } else if (typeof memberId === "string") {
+      referralOwnerMemberId = memberId;
+    }
+
+    if (!referralOwnerMemberId) {
+      const { data, error } = await supabase.rpc("get_referral_owner_customer_id", { referral_code: referralCode });
+
+      if (error) {
+        console.warn("Unable to resolve customer referral code:", error.message);
+      } else if (typeof data === "string" && data !== customer.id) {
+        referralOwnerCustomerId = data;
+      }
     }
   }
 
@@ -101,6 +150,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
       shipping_region: shippingRegion || null,
       referral_code_entered: referralCode || null,
       referral_owner_customer_id: referralOwnerCustomerId,
+      referral_owner_member_id: referralOwnerMemberId,
       subtotal_cents: cart.subtotalCents,
       shipping_cents: shippingCents,
       discount_cents: discountCents,

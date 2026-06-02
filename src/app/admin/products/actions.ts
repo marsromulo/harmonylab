@@ -62,6 +62,11 @@ function getPriceCents(formData: FormData) {
   return Math.round(price * 100);
 }
 
+function getDecimal(formData: FormData, key: string, fallback = 0) {
+  const value = Number.parseFloat(getString(formData, key));
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
 function escapeAttribute(value: string) {
   return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -143,6 +148,7 @@ function getProductPayload(formData: FormData) {
     image_url: getString(formData, "image_url") || null,
     inventory_quantity: Math.max(getInteger(formData, "inventory_quantity", 0), 0),
     is_active: formData.get("is_active") === "on",
+    nuc_points: getDecimal(formData, "nuc_points", 0),
     sort_order: getInteger(formData, "sort_order", 0),
   };
 }

@@ -3,11 +3,12 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { loginCustomerAction, registerCustomerAction } from "@/app/account/actions";
 import { createCheckoutOrderAction } from "@/app/checkout/actions";
+import { CheckoutAddressFields } from "@/components/CheckoutAddressFields";
 import { ReferralCodeField } from "@/components/ReferralCodeField";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getCartSummary } from "@/lib/cart";
-import { getCurrentCustomer, getDefaultCustomerAddress } from "@/lib/customers";
+import { getCurrentCustomer, getCustomerAddresses } from "@/lib/customers";
 import { formatProductPrice } from "@/lib/products";
 
 type CheckoutPageProps = {
@@ -34,7 +35,7 @@ const successMessages: Record<string, string> = {
 export default async function CheckoutPage({ searchParams }: CheckoutPageProps) {
   await connection();
   const [{ error, success }, cart, { profile, user }] = await Promise.all([searchParams, getCartSummary(), getCurrentCustomer()]);
-  const defaultAddress = profile ? await getDefaultCustomerAddress(profile.id) : null;
+  const addresses = profile ? await getCustomerAddresses(profile.id) : [];
   const currency = cart.lines[0]?.product.currency ?? "HKD";
   const errorMessage = error ? errorMessages[error] : null;
   const successMessage = success ? successMessages[success] : null;
@@ -117,61 +118,7 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
           <section className="checkout-layout">
             <form action={createCheckoutOrderAction} className="checkout-form" id="checkout-order-form">
               <h3>Delivery Details</h3>
-              <div className="account-form-split">
-                <label>
-                  First name
-                  <input name="first_name" required defaultValue={defaultAddress?.firstName ?? profile?.firstName ?? ""} />
-                </label>
-                <label>
-                  Last name
-                  <input name="last_name" required defaultValue={defaultAddress?.lastName ?? profile?.lastName ?? ""} />
-                </label>
-              </div>
-              <label>
-                Phone
-                <input name="phone" type="tel" defaultValue={defaultAddress?.phone ?? profile?.phone ?? ""} />
-              </label>
-              <label>
-                Shipping address
-                <input
-                  name="shipping_address_line1"
-                  required
-                  placeholder="Street address, building, flat"
-                  defaultValue={defaultAddress?.addressLine1 ?? ""}
-                />
-              </label>
-              <label>
-                Address line 2
-                <input name="shipping_address_line2" placeholder="Optional" defaultValue={defaultAddress?.addressLine2 ?? ""} />
-              </label>
-              <div className="account-form-split">
-                <label>
-                  District / City
-                  <input name="shipping_city" required defaultValue={defaultAddress?.city ?? ""} />
-                </label>
-                <label>
-                  Region
-                  <select name="shipping_region" defaultValue={defaultAddress?.region ?? "Hong Kong"}>
-                    <option value="Hong Kong">Hong Kong</option>
-                    <option value="Kowloon">Kowloon</option>
-                    <option value="New Territories">New Territories</option>
-                  </select>
-                </label>
-              </div>
-              <div className="account-form-split">
-                <label>
-                  Postal code
-                  <input name="shipping_postal_code" placeholder="Optional" />
-                </label>
-                <label>
-                  Country
-                  <input name="shipping_country" required defaultValue={defaultAddress?.country ?? "Hong Kong"} />
-                </label>
-              </div>
-              <label>
-                Delivery notes
-                <textarea name="delivery_notes" rows={4} placeholder="Optional delivery notes" />
-              </label>
+              <CheckoutAddressFields addresses={addresses} profile={profile} />
             </form>
 
             <div className="checkout-side">

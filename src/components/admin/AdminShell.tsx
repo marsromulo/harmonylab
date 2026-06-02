@@ -5,7 +5,7 @@ import { getAdminAvatarUrl, getAdminDisplayName, requireAdmin } from "@/lib/admi
 import { AdminIcon } from "./AdminIcon";
 
 type AdminShellProps = {
-  active: "dashboard" | "orders" | "products" | "customers" | "referrals" | "reports" | "settings" | "profile";
+  active: "dashboard" | "orders" | "products" | "customers" | "members" | "reports" | "settings" | "profile";
   children: React.ReactNode;
 };
 
@@ -14,7 +14,7 @@ const navItems = [
   { key: "orders", label: "Orders", href: "/admin/orders", icon: "bag" },
   { key: "products", label: "Products", href: "/admin/products", icon: "dashboard" },
   { key: "customers", label: "Customers", href: "/admin/customers", icon: "users" },
-  { key: "referrals", label: "Referral Codes", href: "/admin/referrals", icon: "dashboard" },
+  { key: "members", label: "Members", href: "/admin/members", icon: "users" },
   { key: "reports", label: "Reports", href: "/admin/reports", icon: "dashboard" },
   { key: "settings", label: "Settings", href: "/admin/settings", icon: "dashboard" },
   { key: "profile", label: "Profile", href: "/admin/profile", icon: "users" },

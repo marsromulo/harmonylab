@@ -16,6 +16,7 @@ export type CustomerProfile = {
 export type CustomerAddress = {
   id: string;
   customerId: string;
+  label: string | null;
   firstName: string | null;
   lastName: string | null;
   phone: string | null;
@@ -43,6 +44,7 @@ type CustomerProfileRow = {
 type CustomerAddressRow = {
   id: string;
   customer_id: string;
+  label: string | null;
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
@@ -57,7 +59,7 @@ type CustomerAddressRow = {
 
 const customerProfileSelect = "id,auth_user_id,email,first_name,last_name,full_name,phone,referral_id,referral_points_balance";
 const customerAddressSelect =
-  "id,customer_id,first_name,last_name,phone,address_line1,address_line2,city,region,postal_code,country,is_default";
+  "id,customer_id,label,first_name,last_name,phone,address_line1,address_line2,city,region,postal_code,country,is_default";
 
 function getFullName(firstName: string | null, lastName: string | null, fallbackFullName: string | null) {
   return [firstName, lastName].filter(Boolean).join(" ") || fallbackFullName;
@@ -81,6 +83,7 @@ function mapCustomerAddress(row: CustomerAddressRow): CustomerAddress {
   return {
     id: row.id,
     customerId: row.customer_id,
+    label: row.label,
     firstName: row.first_name,
     lastName: row.last_name,
     phone: row.phone,
@@ -200,6 +203,23 @@ export async function getDefaultCustomerAddress(customerId: string): Promise<Cus
   }
 
   return data ? mapCustomerAddress(data as CustomerAddressRow) : null;
+}
+
+export async function getCustomerAddresses(customerId: string): Promise<CustomerAddress[]> {
+  const supabase = await createSupabaseAuthServerClient();
+  const { data, error } = await supabase
+    .from("customer_addresses")
+    .select(customerAddressSelect)
+    .eq("customer_id", customerId)
+    .order("is_default", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.warn("Unable to load customer addresses:", error.message);
+    return [];
+  }
+
+  return ((data ?? []) as CustomerAddressRow[]).map(mapCustomerAddress);
 }
 
 export async function upsertDefaultCustomerAddress(

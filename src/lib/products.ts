@@ -11,6 +11,7 @@ export type StoreProduct = {
   description: string | null;
   inventoryQuantity: number;
   isActive: boolean;
+  nucPoints: number;
   sortOrder: number;
 };
 
@@ -35,6 +36,7 @@ const fallbackProducts: StoreProduct[] = [
     description: "Brightening skincare essentials for travel.",
     inventoryQuantity: 50,
     isActive: true,
+    nucPoints: 0,
     sortOrder: 10,
   },
   {
@@ -48,6 +50,7 @@ const fallbackProducts: StoreProduct[] = [
     description: "Vitamin C serum for a clearer-looking glow.",
     inventoryQuantity: 75,
     isActive: true,
+    nucPoints: 0,
     sortOrder: 20,
   },
   {
@@ -61,6 +64,7 @@ const fallbackProducts: StoreProduct[] = [
     description: "Day-to-night care for radiant skin.",
     inventoryQuantity: 40,
     isActive: true,
+    nucPoints: 0,
     sortOrder: 30,
   },
   {
@@ -74,6 +78,7 @@ const fallbackProducts: StoreProduct[] = [
     description: "Peptide serum for smoother-looking skin.",
     inventoryQuantity: 60,
     isActive: true,
+    nucPoints: 0,
     sortOrder: 40,
   },
 ];
@@ -88,6 +93,7 @@ type ProductRow = {
   description: string | null;
   inventory_quantity: number;
   is_active: boolean;
+  nuc_points?: number | string | null;
   sort_order: number;
   product_images?: ProductImageRow[] | null;
 };
@@ -105,6 +111,10 @@ const baseProductSelect =
   "id,name,slug,price_cents,currency,image_url,description,inventory_quantity,is_active,sort_order";
 const productSelect =
   "id,name,slug,price_cents,currency,image_url,description,inventory_quantity,is_active,sort_order,product_images(id,image_url,storage_path,alt_text,sort_order,is_primary)";
+const adminBaseProductSelect =
+  "id,name,slug,price_cents,currency,image_url,description,inventory_quantity,is_active,nuc_points,sort_order";
+const adminProductSelect =
+  "id,name,slug,price_cents,currency,image_url,description,inventory_quantity,is_active,nuc_points,sort_order,product_images(id,image_url,storage_path,alt_text,sort_order,is_primary)";
 
 export function formatProductPrice(product: Pick<StoreProduct, "currency" | "priceCents">) {
   const amount = product.priceCents / 100;
@@ -160,6 +170,7 @@ function mapProductRow(product: ProductRow): StoreProduct {
     description: product.description,
     inventoryQuantity: product.inventory_quantity,
     isActive: product.is_active,
+    nucPoints: Number(product.nuc_points ?? 0),
     sortOrder: product.sort_order,
   };
 }
@@ -291,7 +302,7 @@ export async function getAdminProducts(limit = 100): Promise<StoreProduct[]> {
   const supabase = await createSupabaseAuthServerClient();
   const productsResult = await supabase
     .from("products")
-    .select(productSelect)
+    .select(adminProductSelect)
     .order("sort_order", { ascending: true })
     .limit(limit);
   let products = productsResult.data as ProductRow[] | null;
@@ -300,7 +311,7 @@ export async function getAdminProducts(limit = 100): Promise<StoreProduct[]> {
   if (productsError) {
     const retry = await supabase
       .from("products")
-      .select(baseProductSelect)
+      .select(adminBaseProductSelect)
       .order("sort_order", { ascending: true })
       .limit(limit);
 
@@ -334,14 +345,14 @@ export async function getAdminProductById(id: string): Promise<StoreProduct | nu
   const supabase = await createSupabaseAuthServerClient();
   const productResult = await supabase
     .from("products")
-    .select(productSelect)
+    .select(adminProductSelect)
     .eq("id", id)
     .maybeSingle();
   let product = productResult.data as ProductRow | null;
   let productError = productResult.error;
 
   if (productError) {
-    const retry = await supabase.from("products").select(baseProductSelect).eq("id", id).maybeSingle();
+    const retry = await supabase.from("products").select(adminBaseProductSelect).eq("id", id).maybeSingle();
     product = retry.data as ProductRow | null;
     productError = retry.error;
   }

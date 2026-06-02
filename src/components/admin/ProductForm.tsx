@@ -163,6 +163,16 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
           />
         </label>
         <label>
+          NUC Points
+          <input
+            name="nuc_points"
+            type="number"
+            min="0"
+            step="0.01"
+            defaultValue={product ? product.nucPoints.toFixed(2) : "0.00"}
+          />
+        </label>
+        <label>
           <span className="admin-label-row">
             <span>Sort Order</span>
             {nextSortOrder ? <small>Next: {nextSortOrder}</small> : null}
