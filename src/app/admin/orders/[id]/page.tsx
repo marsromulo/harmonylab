@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { formatOrderDate, formatOrderMoney, getAdminOrderDetails, getOrderStatusLabel } from "@/lib/orders";
+import { updateOrderFulfillmentAction } from "../actions";
 
 export const metadata: Metadata = {
   title: "Order Details | Harmony Lab Admin",
@@ -14,15 +15,27 @@ type AdminOrderDetailPageProps = {
   params: Promise<{
     id: string;
   }>;
+  searchParams: Promise<{
+    error?: string;
+    success?: string;
+  }>;
+};
+
+const errorMessages: Record<string, string> = {
+  "fulfillment-update-failed": "Unable to update fulfillment details.",
+};
+
+const successMessages: Record<string, string> = {
+  "fulfillment-updated": "Fulfillment details updated.",
 };
 
 function getCustomerLabel(name: string | null, email: string | null) {
   return name || email || "Customer";
 }
 
-export default async function AdminOrderDetailPage({ params }: AdminOrderDetailPageProps) {
+export default async function AdminOrderDetailPage({ params, searchParams }: AdminOrderDetailPageProps) {
   await connection();
-  const { id } = await params;
+  const [{ id }, { error, success }] = await Promise.all([params, searchParams]);
   const details = await getAdminOrderDetails(id);
 
   if (!details) {
@@ -30,6 +43,8 @@ export default async function AdminOrderDetailPage({ params }: AdminOrderDetailP
   }
 
   const { customer, items, order, referralMember, referralOwner } = details;
+  const errorMessage = error ? errorMessages[error] : null;
+  const successMessage = success ? successMessages[success] : null;
 
   return (
     <AdminShell active="orders">
@@ -42,6 +57,9 @@ export default async function AdminOrderDetailPage({ params }: AdminOrderDetailP
           Back to Orders
         </Link>
       </section>
+
+      {errorMessage ? <p className="admin-form-alert error">{errorMessage}</p> : null}
+      {successMessage ? <p className="admin-form-alert success">{successMessage}</p> : null}
 
       <section className="admin-detail-grid">
         <div className="admin-panel admin-detail-panel">
@@ -56,6 +74,18 @@ export default async function AdminOrderDetailPage({ params }: AdminOrderDetailP
             <div>
               <dt>Date</dt>
               <dd>{formatOrderDate(order.createdAt)}</dd>
+            </div>
+            <div>
+              <dt>Payment method</dt>
+              <dd>{order.paymentMethod === "credit_card" ? "Credit Card" : order.paymentMethod ?? "Not selected"}</dd>
+            </div>
+            <div>
+              <dt>Payment status</dt>
+              <dd>{order.paymentStatus}</dd>
+            </div>
+            <div>
+              <dt>Paid at</dt>
+              <dd>{order.paidAt ? formatOrderDate(order.paidAt) : "Not paid"}</dd>
             </div>
             <div>
               <dt>Customer</dt>
@@ -111,6 +141,52 @@ export default async function AdminOrderDetailPage({ params }: AdminOrderDetailP
             </div>
           </dl>
         </div>
+      </section>
+
+      <section className="admin-panel admin-detail-panel">
+        <h2>Fulfillment</h2>
+        <form action={updateOrderFulfillmentAction.bind(null, order.id)} className="admin-detail-form admin-fulfillment-form">
+          <div className="admin-form-grid">
+            <label>
+              Status
+              <select name="status" defaultValue={order.status === "delivered" ? "delivered" : "shipped"}>
+                <option value="shipped">Shipped</option>
+                <option value="delivered">Complete / Delivered</option>
+              </select>
+            </label>
+            <label>
+              Carrier
+              <input name="carrier" placeholder="SF Express, DHL, etc." defaultValue={order.fulfillmentCarrier ?? ""} />
+            </label>
+            <label>
+              Tracking number
+              <input name="tracking_number" defaultValue={order.fulfillmentTrackingNumber ?? ""} />
+            </label>
+            <label>
+              Tracking URL
+              <input name="tracking_url" type="url" defaultValue={order.fulfillmentTrackingUrl ?? ""} />
+            </label>
+          </div>
+          <label>
+            Fulfillment notes
+            <textarea name="fulfillment_notes" rows={3} defaultValue={order.fulfillmentNotes ?? ""} />
+          </label>
+          <div className="admin-form-actions">
+            <button className="admin-btn" type="submit">
+              Update Fulfillment
+            </button>
+          </div>
+        </form>
+        <dl className="admin-detail-list admin-fulfillment-meta">
+          <div>
+            <dt>Shipped at</dt>
+            <dd>{order.shippedAt ? formatOrderDate(order.shippedAt) : "Not shipped"}</dd>
+          </div>
+          <div>
+            <dt>Delivered at</dt>
+            <dd>{order.deliveredAt ? formatOrderDate(order.deliveredAt) : "Not delivered"}</dd>
+          </div>
+        </dl>
       </section>
 
       <section className="admin-panel admin-detail-panel">

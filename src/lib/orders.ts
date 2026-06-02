@@ -10,6 +10,14 @@ export type StoreOrder = {
   customerName: string | null;
   status: OrderStatus;
   currency: string;
+  deliveredAt: string | null;
+  fulfillmentCarrier: string | null;
+  fulfillmentNotes: string | null;
+  fulfillmentTrackingNumber: string | null;
+  fulfillmentTrackingUrl: string | null;
+  paidAt: string | null;
+  paymentMethod: string | null;
+  paymentStatus: string;
   subtotalCents: number;
   shippingCents: number;
   discountCents: number;
@@ -25,6 +33,7 @@ export type StoreOrder = {
   shippingRegion: string | null;
   shippingPostalCode: string | null;
   shippingCountry: string | null;
+  shippedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -54,6 +63,14 @@ type StoreOrderRow = {
   customer_name: string | null;
   status: OrderStatus;
   currency: string;
+  delivered_at?: string | null;
+  fulfillment_carrier?: string | null;
+  fulfillment_notes?: string | null;
+  fulfillment_tracking_number?: string | null;
+  fulfillment_tracking_url?: string | null;
+  paid_at: string | null;
+  payment_method: string | null;
+  payment_status: string;
   subtotal_cents: number;
   shipping_cents: number;
   discount_cents: number;
@@ -69,6 +86,7 @@ type StoreOrderRow = {
   shipping_region: string | null;
   shipping_postal_code: string | null;
   shipping_country: string | null;
+  shipped_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -107,7 +125,7 @@ export type OrderRelatedMember = {
   referralCode: string;
 };
 
-const orderSelect = [
+const baseOrderColumns = [
   "id",
   "order_number",
   "customer_id",
@@ -115,6 +133,9 @@ const orderSelect = [
   "customer_name",
   "status",
   "currency",
+  "paid_at",
+  "payment_method",
+  "payment_status",
   "subtotal_cents",
   "shipping_cents",
   "discount_cents",
@@ -132,7 +153,19 @@ const orderSelect = [
   "shipping_country",
   "created_at",
   "updated_at",
-].join(",");
+];
+
+const fulfillmentOrderColumns = [
+  "delivered_at",
+  "fulfillment_carrier",
+  "fulfillment_notes",
+  "fulfillment_tracking_number",
+  "fulfillment_tracking_url",
+  "shipped_at",
+];
+
+const baseOrderSelect = baseOrderColumns.join(",");
+const orderSelect = [...baseOrderColumns, ...fulfillmentOrderColumns].join(",");
 
 const statusLabels: Record<OrderStatus, string> = {
   pending: "Pending",
@@ -153,6 +186,14 @@ function mapOrder(row: StoreOrderRow): StoreOrder {
     customerName: row.customer_name,
     status: row.status,
     currency: row.currency,
+    deliveredAt: row.delivered_at ?? null,
+    fulfillmentCarrier: row.fulfillment_carrier ?? null,
+    fulfillmentNotes: row.fulfillment_notes ?? null,
+    fulfillmentTrackingNumber: row.fulfillment_tracking_number ?? null,
+    fulfillmentTrackingUrl: row.fulfillment_tracking_url ?? null,
+    paidAt: row.paid_at,
+    paymentMethod: row.payment_method,
+    paymentStatus: row.payment_status,
     subtotalCents: row.subtotal_cents,
     shippingCents: row.shipping_cents,
     discountCents: row.discount_cents,
@@ -168,9 +209,14 @@ function mapOrder(row: StoreOrderRow): StoreOrder {
     shippingRegion: row.shipping_region,
     shippingPostalCode: row.shipping_postal_code,
     shippingCountry: row.shipping_country,
+    shippedAt: row.shipped_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function isMissingFulfillmentColumnError(message: string) {
+  return fulfillmentOrderColumns.some((column) => message.includes(column)) && message.includes("does not exist");
 }
 
 function mapOrderItem(row: StoreOrderItemRow): StoreOrderItem {
@@ -229,11 +275,17 @@ export function getOrderStatusLabel(status: OrderStatus) {
 
 export async function getAdminOrders(limit = 100) {
   const supabase = await createSupabaseAuthServerClient();
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("orders")
     .select(orderSelect)
     .order("created_at", { ascending: false })
     .limit(limit);
+
+  if (error && isMissingFulfillmentColumnError(error.message)) {
+    const fallback = await supabase.from("orders").select(baseOrderSelect).order("created_at", { ascending: false }).limit(limit);
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error) {
     throw new Error(`Unable to load orders: ${error.message}`);
@@ -244,12 +296,23 @@ export async function getAdminOrders(limit = 100) {
 
 export async function getCustomerOrders(customerId: string, limit = 20) {
   const supabase = await createSupabaseAuthServerClient();
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("orders")
     .select(orderSelect)
     .eq("customer_id", customerId)
     .order("created_at", { ascending: false })
     .limit(limit);
+
+  if (error && isMissingFulfillmentColumnError(error.message)) {
+    const fallback = await supabase
+      .from("orders")
+      .select(baseOrderSelect)
+      .eq("customer_id", customerId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error) {
     throw new Error(`Unable to load customer orders: ${error.message}`);
@@ -260,7 +323,13 @@ export async function getCustomerOrders(customerId: string, limit = 20) {
 
 export async function getAdminOrderDetails(orderId: string) {
   const supabase = await createSupabaseAuthServerClient();
-  const { data: order, error: orderError } = await supabase.from("orders").select(orderSelect).eq("id", orderId).maybeSingle();
+  let { data: order, error: orderError } = await supabase.from("orders").select(orderSelect).eq("id", orderId).maybeSingle();
+
+  if (orderError && isMissingFulfillmentColumnError(orderError.message)) {
+    const fallback = await supabase.from("orders").select(baseOrderSelect).eq("id", orderId).maybeSingle();
+    order = fallback.data;
+    orderError = fallback.error;
+  }
 
   if (orderError) {
     throw new Error(`Unable to load order: ${orderError.message}`);

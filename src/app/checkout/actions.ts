@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { clearCart, getCartSummary } from "@/lib/cart";
 import { ensureCustomerProfile, upsertDefaultCustomerAddress } from "@/lib/customers";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
+import { getSiteUrl, getStripe } from "@/lib/stripe";
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -18,6 +19,10 @@ function getOrderNumber() {
 
 function normalizeReferralCode(value: string) {
   return value.replace(/[^\w-]/g, "").toUpperCase().slice(0, 40);
+}
+
+function getPaymentMethod(value: string) {
+  return value === "alipay_hk" ? "alipay_hk" : "credit_card";
 }
 
 export async function createCheckoutOrderAction(formData: FormData) {
@@ -49,10 +54,15 @@ export async function createCheckoutOrderAction(formData: FormData) {
   const shippingCountry = getString(formData, "shipping_country") || "Hong Kong";
   const deliveryNotes = getString(formData, "delivery_notes");
   const customerAddressId = getString(formData, "customer_address_id");
+  const paymentMethod = getPaymentMethod(getString(formData, "payment_method"));
   const referralCode = normalizeReferralCode(getString(formData, "referral_code"));
 
   if (!firstName || !lastName || !shippingAddressLine1 || !shippingCity) {
     redirect("/checkout?error=shipping-invalid");
+  }
+
+  if (paymentMethod === "alipay_hk") {
+    redirect("/checkout?error=payment-unavailable");
   }
 
   const customer = await ensureCustomerProfile(user, { firstName, fullName, lastName, phone });
@@ -151,6 +161,8 @@ export async function createCheckoutOrderAction(formData: FormData) {
       referral_code_entered: referralCode || null,
       referral_owner_customer_id: referralOwnerCustomerId,
       referral_owner_member_id: referralOwnerMemberId,
+      payment_method: paymentMethod,
+      payment_status: "unpaid",
       subtotal_cents: cart.subtotalCents,
       shipping_cents: shippingCents,
       discount_cents: discountCents,
@@ -178,6 +190,43 @@ export async function createCheckoutOrderAction(formData: FormData) {
     throw new Error(`Unable to create order items: ${itemError.message}`);
   }
 
+  const stripe = getStripe();
+  const siteUrl = getSiteUrl();
+  const session = await stripe.checkout.sessions.create({
+    customer_email: email ?? undefined,
+    line_items: cart.lines.map((line) => ({
+      price_data: {
+        currency: line.product.currency.toLowerCase(),
+        product_data: {
+          name: line.product.name,
+        },
+        unit_amount: line.product.priceCents,
+      },
+      quantity: line.quantity,
+    })),
+    metadata: {
+      order_id: order.id,
+      order_number: order.order_number,
+    },
+    mode: "payment",
+    payment_method_types: ["card"],
+    success_url: `${siteUrl}/checkout/success?order=${encodeURIComponent(order.order_number)}&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${siteUrl}/checkout?error=payment-cancelled`,
+  });
+
+  if (!session.url) {
+    throw new Error("Unable to create Stripe checkout session.");
+  }
+
+  const { error: paymentError } = await supabase
+    .from("orders")
+    .update({ stripe_checkout_session_id: session.id })
+    .eq("id", order.id);
+
+  if (paymentError) {
+    throw new Error(`Unable to save Stripe checkout session: ${paymentError.message}`);
+  }
+
   await clearCart();
-  redirect(`/checkout/success?order=${encodeURIComponent(order.order_number)}`);
+  redirect(session.url);
 }

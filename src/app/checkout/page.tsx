@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { loginCustomerAction, registerCustomerAction } from "@/app/account/actions";
 import { createCheckoutOrderAction } from "@/app/checkout/actions";
 import { CheckoutAddressFields } from "@/components/CheckoutAddressFields";
+import { CheckoutPaymentMethod } from "@/components/CheckoutPaymentMethod";
 import { ReferralCodeField } from "@/components/ReferralCodeField";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -24,6 +25,8 @@ const errorMessages: Record<string, string> = {
   "register-failed": "We could not create this account. Try again or sign in.",
   "register-invalid": "Please enter your first name, last name, email, and a password with at least 8 characters.",
   "register-password-mismatch": "Please make sure both password fields match.",
+  "payment-cancelled": "Payment was cancelled. You can review your checkout and try again.",
+  "payment-unavailable": "That payment method is not available yet. Please choose Credit Card.",
   "shipping-invalid": "Please enter your name, address, and city for delivery.",
 };
 
@@ -158,6 +161,7 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
                   Edit cart
                 </Link>
               </aside>
+              <CheckoutPaymentMethod formId="checkout-order-form" />
               <ReferralCodeField formId="checkout-order-form" />
               <button className="checkout-place-order" form="checkout-order-form" type="submit">
                 PLACE ORDER

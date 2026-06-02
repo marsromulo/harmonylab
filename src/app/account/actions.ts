@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ensureCustomerProfile } from "@/lib/customers";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
+import { getSiteUrl, getStripe } from "@/lib/stripe";
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -23,6 +24,21 @@ function getRedirectPath(formData: FormData) {
 function getRedirectUrl(path: string, key: "error" | "success", value: string) {
   return `${path}?${key}=${encodeURIComponent(value)}`;
 }
+
+type PayableOrderRow = {
+  id: string;
+  order_number: string;
+  customer_email: string | null;
+  currency: string;
+  payment_status: string;
+  status: string;
+};
+
+type PayableOrderItemRow = {
+  product_name: string;
+  quantity: number;
+  unit_price_cents: number;
+};
 
 function getAddressPayload(formData: FormData) {
   const firstName = getString(formData, "first_name");
@@ -235,4 +251,81 @@ export async function deleteCustomerAddressAction(addressId: string) {
   revalidatePath("/account");
   revalidatePath("/checkout");
   redirect("/account?success=address-deleted");
+}
+
+export async function payPendingOrderAction(orderId: string) {
+  const { profile, supabase } = await requireCustomerProfile();
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .select("id,order_number,customer_email,currency,payment_status,status")
+    .eq("id", orderId)
+    .eq("customer_id", profile.id)
+    .maybeSingle();
+
+  if (orderError || !order) {
+    redirect("/account?error=payment-order-not-found");
+  }
+
+  const orderRow = order as unknown as PayableOrderRow;
+
+  if (orderRow.payment_status === "paid" || orderRow.status === "paid") {
+    redirect("/account?success=order-already-paid");
+  }
+
+  if (orderRow.status === "cancelled" || orderRow.status === "refunded") {
+    redirect("/account?error=payment-order-not-payable");
+  }
+
+  const { data: items, error: itemError } = await supabase
+    .from("order_items")
+    .select("product_name,quantity,unit_price_cents")
+    .eq("order_id", orderId);
+
+  if (itemError || !items?.length) {
+    redirect("/account?error=payment-order-not-payable");
+  }
+
+  const stripe = getStripe();
+  const siteUrl = getSiteUrl();
+  const session = await stripe.checkout.sessions.create({
+    customer_email: orderRow.customer_email ?? profile.email ?? undefined,
+    line_items: ((items ?? []) as unknown as PayableOrderItemRow[]).map((item) => ({
+      price_data: {
+        currency: orderRow.currency.toLowerCase(),
+        product_data: {
+          name: item.product_name,
+        },
+        unit_amount: item.unit_price_cents,
+      },
+      quantity: item.quantity,
+    })),
+    metadata: {
+      order_id: orderRow.id,
+      order_number: orderRow.order_number,
+    },
+    mode: "payment",
+    payment_method_types: ["card"],
+    success_url: `${siteUrl}/checkout/success?order=${encodeURIComponent(orderRow.order_number)}&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${siteUrl}/account?error=payment-cancelled`,
+  });
+
+  if (!session.url) {
+    throw new Error("Unable to create Stripe checkout session.");
+  }
+
+  const { error: paymentError } = await supabase
+    .from("orders")
+    .update({
+      payment_method: "credit_card",
+      payment_status: "unpaid",
+      stripe_checkout_session_id: session.id,
+    })
+    .eq("id", orderRow.id)
+    .eq("customer_id", profile.id);
+
+  if (paymentError) {
+    redirect("/account?error=payment-session-failed");
+  }
+
+  redirect(session.url);
 }

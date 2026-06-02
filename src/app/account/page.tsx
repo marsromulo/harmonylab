@@ -5,6 +5,7 @@ import {
   deleteCustomerAddressAction,
   loginCustomerAction,
   logoutCustomerAction,
+  payPendingOrderAction,
   registerCustomerAction,
   updateCustomerAddressAction,
 } from "@/app/account/actions";
@@ -29,11 +30,16 @@ const errorMessages: Record<string, string> = {
   "address-delete-failed": "We could not delete that address.",
   "address-invalid": "Please enter first name, last name, shipping address, and city.",
   "address-save-failed": "We could not save that address.",
+  "payment-cancelled": "Payment was cancelled. You can pay again from your order history.",
+  "payment-order-not-found": "We could not find that order.",
+  "payment-order-not-payable": "That order cannot be paid online.",
+  "payment-session-failed": "We could not start payment for that order.",
 };
 
 const successMessages: Record<string, string> = {
   "address-deleted": "Address deleted.",
   "address-saved": "Address saved.",
+  "order-already-paid": "That order is already paid.",
   "confirm-email": "Account created. Check your email if confirmation is enabled.",
   registered: "Account created. You are signed in.",
 };
@@ -101,6 +107,10 @@ function AddressFields({ address, profile }: { address?: CustomerAddress; profil
       </label>
     </>
   );
+}
+
+function canPayOrder(order: { paymentStatus: string; status: string }) {
+  return order.paymentStatus !== "paid" && !["paid", "cancelled", "refunded"].includes(order.status);
 }
 
 export default async function AccountPage({ searchParams }: AccountPageProps) {
@@ -205,9 +215,18 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                         <b>{order.orderNumber}</b>
                         <span>{formatOrderDate(order.createdAt)}</span>
                       </div>
-                      <div>
-                        <strong>{formatOrderMoney(order.totalCents, order.currency)}</strong>
-                        <span className={`account-order-status ${order.status}`}>{getOrderStatusLabel(order.status)}</span>
+                      <div className="account-order-summary">
+                        <div>
+                          <strong>{formatOrderMoney(order.totalCents, order.currency)}</strong>
+                          <span className={`account-order-status ${order.status}`}>{getOrderStatusLabel(order.status)}</span>
+                        </div>
+                        {canPayOrder(order) ? (
+                          <form action={payPendingOrderAction.bind(null, order.id)}>
+                            <button className="account-pay-now" type="submit">
+                              PAY NOW
+                            </button>
+                          </form>
+                        ) : null}
                       </div>
                     </article>
                   ))}

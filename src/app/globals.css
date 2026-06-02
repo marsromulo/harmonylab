@@ -238,7 +238,7 @@ body {
 .mini {
   display: flex;
   gap: 65px;
-  margin-top: 49px;
+  margin-top: 30px;
   margin-left: 18px;
   text-align: center;
 }
@@ -679,7 +679,7 @@ body {
   border-top: 1px solid var(--line);
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  padding: 30px 50px 0;
+  padding: 30px 50px 30px;
   background: #fff;
 }
 
@@ -1153,15 +1153,18 @@ body {
   gap: 10px;
 }
 
-.account-address-card,
-.account-address-create {
+.account-address-card {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 14px;
 }
 
-.account-address-card summary,
-.account-address-create summary {
+.account-address-create {
+  display: grid;
+  gap: 14px;
+}
+
+.account-address-card summary {
   align-items: center;
   cursor: pointer;
   display: flex;
@@ -1176,16 +1179,31 @@ body {
 }
 
 .account-address-card summary b,
-.account-address-card summary small,
-.account-address-create summary {
+.account-address-card summary small {
   display: block;
 }
 
-.account-address-card summary b,
-.account-address-create summary {
+.account-address-card summary b {
   color: #161616;
   font-size: 14px;
   font-weight: 800;
+}
+
+.account-address-create summary {
+  align-items: center;
+  background: var(--orange);
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  font-size: 12px;
+  font-weight: 800;
+  height: 38px;
+  justify-content: center;
+  list-style: none;
+  max-width: 180px;
+  padding: 0 18px;
+  text-transform: uppercase;
 }
 
 .account-address-card summary small {
@@ -1263,8 +1281,30 @@ body {
   margin-top: 5px;
 }
 
-.account-order-card > div:last-child {
+.account-order-summary {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  justify-content: flex-end;
   text-align: right;
+}
+
+.account-order-summary form {
+  margin: 0;
+}
+
+.account-pay-now {
+  background: var(--orange);
+  border: 0;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  height: 34px;
+  padding: 0 16px;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .account-order-status {
@@ -1307,6 +1347,65 @@ body {
 .checkout-side {
   display: grid;
   gap: 14px;
+}
+
+.checkout-payment {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.checkout-payment h3 {
+  color: #171717;
+  font-family: var(--font-playfair), serif;
+  font-size: 22px;
+  margin: 0;
+}
+
+.checkout-payment-options {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+}
+
+.checkout-payment-option {
+  align-items: center;
+  border: 1px solid #e1ddd8;
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 12px;
+  width: 100%;
+}
+
+.checkout-payment-option.active {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 3px rgba(255, 118, 0, 0.12);
+}
+
+.checkout-payment-option input {
+  accent-color: var(--orange);
+}
+
+.checkout-payment-option b,
+.checkout-payment-option small {
+  display: block;
+}
+
+.checkout-payment-option b {
+  color: #1c1c1c;
+  font-size: 13px;
+}
+
+.checkout-payment-option small {
+  color: #625b54;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 4px;
 }
 
 .checkout-place-order {
@@ -1602,6 +1701,17 @@ body {
 
   .account-form-split {
     grid-template-columns: 1fr;
+  }
+
+  .account-order-card,
+  .account-order-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .account-order-summary {
+    gap: 10px;
+    text-align: left;
   }
 
   .card {
@@ -2441,7 +2551,9 @@ body {
   font-weight: 700;
 }
 
-.admin-detail-form input {
+.admin-detail-form input,
+.admin-detail-form select,
+.admin-detail-form textarea {
   border: 1px solid #e1ddd8;
   border-radius: 6px;
   color: #1c1c1c;
@@ -2450,10 +2562,35 @@ body {
   width: 100%;
 }
 
-.admin-detail-form input:focus {
+.admin-detail-form select {
+  appearance: auto;
+  background: #fff;
+}
+
+.admin-detail-form textarea {
+  resize: vertical;
+}
+
+.admin-detail-form input:focus,
+.admin-detail-form select:focus,
+.admin-detail-form textarea:focus {
   border-color: var(--admin-orange);
   box-shadow: 0 0 0 3px rgba(255, 118, 0, 0.12);
   outline: none;
+}
+
+.admin-fulfillment-form select,
+.admin-fulfillment-form textarea {
+  background: #fff;
+  border: 1px solid #cfc8c0;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.02);
+  min-height: 43px;
+}
+
+.admin-fulfillment-meta {
+  border-top: 1px solid #eee;
+  margin-top: 18px;
+  padding-top: 14px;
 }
 
 .admin-address-grid {

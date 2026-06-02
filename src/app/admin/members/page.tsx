@@ -3,7 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { MemberCreatePanel } from "@/components/admin/MemberCreatePanel";
-import { getAdminMemberName, getAdminMembers } from "@/lib/admin-members";
+import { formatNucPoints, getAdminMemberName, getAdminMembers } from "@/lib/admin-members";
 import { createMemberAction } from "./actions";
 
 export const metadata: Metadata = {
@@ -55,6 +55,7 @@ export default async function AdminMembersPage({ searchParams }: AdminMembersPag
                 <th>Member</th>
                 <th>Phone No.</th>
                 <th>Referral Code</th>
+                <th>NUC Points</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -70,6 +71,7 @@ export default async function AdminMembersPage({ searchParams }: AdminMembersPag
                   <td>
                     <span className="admin-referral">{member.referralCode}</span>
                   </td>
+                  <td>{formatNucPoints(member.totalNucPoints)}</td>
                   <td>
                     <Link className="admin-table-action" href={`/admin/members/${member.id}`}>
                       Edit

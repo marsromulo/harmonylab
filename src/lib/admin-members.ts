@@ -24,6 +24,7 @@ type ReferralOrderRow = {
   id: string;
   order_number: string;
   referral_code_entered: string | null;
+  referral_owner_member_id: string | null;
   created_at: string;
 };
 
@@ -47,6 +48,14 @@ export type AdminMemberReferralOrder = {
 
 const memberSelect = "id,first_name,last_name,phone,referral_code,created_at";
 
+type AdminSupabaseClient = Awaited<ReturnType<typeof requireAdmin>>["supabase"];
+
+type MemberReferralTotals = {
+  referralOrders: AdminMemberReferralOrder[];
+  referredOrderCount: number;
+  totalNucPoints: number;
+};
+
 function normalizeReferralCode(value: string | null) {
   return (value ?? "").trim().toUpperCase();
 }
@@ -62,48 +71,27 @@ export function formatNucPoints(points: number) {
   });
 }
 
-export async function getAdminMembers() {
-  const { supabase } = await requireAdmin();
-  const { data: members, error: membersError } = await supabase
-    .from("members")
-    .select(memberSelect)
-    .order("created_at", { ascending: false });
+async function getMemberReferralTotals(supabase: AdminSupabaseClient, memberRows: MemberRow[]) {
+  const totalsByMemberId = new Map<string, MemberReferralTotals>();
 
-  if (membersError) {
-    throw new Error(`Unable to load members: ${membersError.message}`);
+  for (const member of memberRows) {
+    totalsByMemberId.set(member.id, {
+      referralOrders: [],
+      referredOrderCount: 0,
+      totalNucPoints: 0,
+    });
   }
 
-  return ((members ?? []) as unknown as MemberRow[]).map((member): AdminMember => ({
-    id: member.id,
-    firstName: member.first_name,
-    lastName: member.last_name,
-    phone: member.phone,
-    referralCode: member.referral_code,
-    createdAt: member.created_at,
-    referredOrderCount: 0,
-    totalNucPoints: 0,
-  }));
-}
-
-export async function getAdminMemberDetails(memberId: string) {
-  const { supabase } = await requireAdmin();
-  const { data: member, error: memberError } = await supabase.from("members").select(memberSelect).eq("id", memberId).maybeSingle();
-
-  if (memberError) {
-    throw new Error(`Unable to load member: ${memberError.message}`);
+  if (memberRows.length === 0) {
+    return totalsByMemberId;
   }
 
-  if (!member) {
-    return null;
-  }
-
-  const memberRow = member as unknown as MemberRow;
   const [{ data: orders, error: ordersError }, { data: orderItems, error: orderItemsError }, { data: products, error: productsError }] =
     await Promise.all([
       supabase
         .from("orders")
-        .select("id,order_number,referral_code_entered,created_at")
-        .ilike("referral_code_entered", memberRow.referral_code),
+        .select("id,order_number,referral_code_entered,referral_owner_member_id,created_at")
+        .order("created_at", { ascending: false }),
       supabase.from("order_items").select("order_id,product_id,quantity"),
       supabase.from("products").select("id,nuc_points"),
     ]);
@@ -120,6 +108,8 @@ export async function getAdminMemberDetails(memberId: string) {
     throw new Error(`Unable to load product NUC points: ${productsError.message}`);
   }
 
+  const memberById = new Map(memberRows.map((member) => [member.id, member]));
+  const memberIdByReferralCode = new Map(memberRows.map((member) => [normalizeReferralCode(member.referral_code), member.id]));
   const productPointsById = new Map(
     ((products ?? []) as unknown as ProductNucPointsRow[]).map((product) => [product.id, Number(product.nuc_points ?? 0)]),
   );
@@ -131,13 +121,13 @@ export async function getAdminMemberDetails(memberId: string) {
     itemsByOrderId.set(item.order_id, items);
   }
 
-  const referralOrders: AdminMemberReferralOrder[] = [];
-  let totalNucPoints = 0;
-
   for (const order of (orders ?? []) as unknown as ReferralOrderRow[]) {
-    const referralCode = normalizeReferralCode(order.referral_code_entered);
+    const ownerMemberId =
+      order.referral_owner_member_id && memberById.has(order.referral_owner_member_id)
+        ? order.referral_owner_member_id
+        : memberIdByReferralCode.get(normalizeReferralCode(order.referral_code_entered));
 
-    if (!referralCode || referralCode !== normalizeReferralCode(memberRow.referral_code)) {
+    if (!ownerMemberId) {
       continue;
     }
 
@@ -147,14 +137,66 @@ export async function getAdminMemberDetails(memberId: string) {
       orderNucPoints += (productPointsById.get(item.product_id ?? "") ?? 0) * item.quantity;
     }
 
-    totalNucPoints += orderNucPoints;
-    referralOrders.push({
+    const totals = totalsByMemberId.get(ownerMemberId);
+
+    if (!totals) {
+      continue;
+    }
+
+    totals.referredOrderCount += 1;
+    totals.totalNucPoints += orderNucPoints;
+    totals.referralOrders.push({
       id: order.id,
       orderNumber: order.order_number,
       createdAt: order.created_at,
       nucPoints: orderNucPoints,
     });
   }
+
+  return totalsByMemberId;
+}
+
+export async function getAdminMembers() {
+  const { supabase } = await requireAdmin();
+  const { data: members, error: membersError } = await supabase
+    .from("members")
+    .select(memberSelect)
+    .order("created_at", { ascending: false });
+
+  if (membersError) {
+    throw new Error(`Unable to load members: ${membersError.message}`);
+  }
+
+  const memberRows = (members ?? []) as unknown as MemberRow[];
+  const totalsByMemberId = await getMemberReferralTotals(supabase, memberRows);
+
+  return memberRows.map((member): AdminMember => ({
+    id: member.id,
+    firstName: member.first_name,
+    lastName: member.last_name,
+    phone: member.phone,
+    referralCode: member.referral_code,
+    createdAt: member.created_at,
+    referredOrderCount: totalsByMemberId.get(member.id)?.referredOrderCount ?? 0,
+    totalNucPoints: totalsByMemberId.get(member.id)?.totalNucPoints ?? 0,
+  }));
+}
+
+export async function getAdminMemberDetails(memberId: string) {
+  const { supabase } = await requireAdmin();
+  const { data: member, error: memberError } = await supabase.from("members").select(memberSelect).eq("id", memberId).maybeSingle();
+
+  if (memberError) {
+    throw new Error(`Unable to load member: ${memberError.message}`);
+  }
+
+  if (!member) {
+    return null;
+  }
+
+  const memberRow = member as unknown as MemberRow;
+  const totals = (await getMemberReferralTotals(supabase, [memberRow])).get(memberRow.id);
+  const referralOrders = totals?.referralOrders ?? [];
 
   return {
     member: {
@@ -164,8 +206,8 @@ export async function getAdminMemberDetails(memberId: string) {
       phone: memberRow.phone,
       referralCode: memberRow.referral_code,
       createdAt: memberRow.created_at,
-      referredOrderCount: referralOrders.length,
-      totalNucPoints,
+      referredOrderCount: totals?.referredOrderCount ?? 0,
+      totalNucPoints: totals?.totalNucPoints ?? 0,
     },
     referralOrders,
   };
