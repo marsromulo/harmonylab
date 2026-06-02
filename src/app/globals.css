@@ -1085,6 +1085,8 @@ body {
   font-weight: 800;
   height: 38px;
   margin-top: 4px;
+  min-width: 132px;
+  padding: 0 18px;
 }
 
 .account-profile {
@@ -1241,12 +1243,32 @@ body {
 }
 
 .account-address-actions {
+  align-items: center;
   display: flex;
-  justify-content: flex-start;
+  gap: 14px;
+  justify-content: space-between;
 }
 
-.account-delete-address {
-  margin-top: 10px;
+.account-address-actions .account-address-save-button {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  min-width: 150px;
+  padding-left: 24px;
+  padding-right: 24px;
+  width: auto;
+}
+
+.account-address-actions .account-delete-address {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: var(--orange);
+  height: auto;
+  margin-top: 0;
+  min-width: 0;
+  padding: 0;
+  width: auto;
 }
 
 .checkout-address-fields {

@@ -178,14 +178,19 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                       <form action={updateCustomerAddressAction.bind(null, address.id)} className="account-form account-address-form">
                         <AddressFields address={address} profile={profile} />
                         <div className="account-address-actions">
-                          <button type="submit">SAVE ADDRESS</button>
+                          <button className="account-address-save-button" type="submit">
+                            SAVE ADDRESS
+                          </button>
+                          <button
+                            className="cart-clear account-delete-address"
+                            form={`delete-address-${address.id}`}
+                            type="submit"
+                          >
+                            Delete address
+                          </button>
                         </div>
                       </form>
-                      <form action={deleteCustomerAddressAction.bind(null, address.id)}>
-                        <button className="cart-clear account-delete-address" type="submit">
-                          Delete address
-                        </button>
-                      </form>
+                      <form action={deleteCustomerAddressAction.bind(null, address.id)} id={`delete-address-${address.id}`} />
                     </details>
                   ))}
                 </div>
