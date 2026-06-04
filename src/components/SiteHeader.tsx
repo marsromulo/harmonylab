@@ -18,18 +18,19 @@ export async function SiteHeader({ active = "home" }: SiteHeaderProps) {
   const cart = await getCartSummary();
 
   return (
-    <header className="nav">
-      <Link className="brand" href="/">
+    <header className="site-header">
+      <Link className="site-brand" href="/" aria-label="Harmony Lab Beauty home">
         <Image
-          src="/asset/logo.png"
-          alt="Harmony Lab"
-          width={192}
-          height={35}
+          src="/layout3/logo-brand.png"
+          alt="Harmony Lab Beauty"
+          width={270}
+          height={50}
           priority
+          style={{ height: "auto", width: "100%" }}
           unoptimized
         />
       </Link>
-      <nav className="menu" aria-label="Primary navigation">
+      <nav className="site-nav" aria-label="Primary navigation">
         {navItems.map((item) => (
           <Link
             className={active === item.key ? "active" : undefined}
@@ -40,32 +41,22 @@ export async function SiteHeader({ active = "home" }: SiteHeaderProps) {
           </Link>
         ))}
       </nav>
-      <div className="icons" aria-label="Shop tools">
-        <Link className={active === "account" ? "account-link active" : "account-link"} href="/account" aria-label="Account">
-          <svg
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-            width="25"
-            height="25"
-            fill="none"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          >
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 21c1.6-4 4.2-6 8-6s6.4 2 8 6" />
-          </svg>
+      <div className="site-actions" aria-label="Account and cart">
+        <Link
+          className={active === "account" ? "site-icon-user active" : "site-icon-user"}
+          href="/account"
+          aria-label="Account"
+        >
+          <span aria-hidden="true" />
         </Link>
         <Link
-          className="bag-link"
+          className="site-icon-bag"
           href="/cart"
           aria-label={`Cart with ${cart.itemCount} item${cart.itemCount === 1 ? "" : "s"}`}
           data-cart-animation-target="true"
         >
-          <span className="bag" aria-hidden="true">
-            <i>{cart.itemCount}</i>
-          </span>
+          <span aria-hidden="true" />
+          <em>{cart.itemCount}</em>
         </Link>
       </div>
     </header>
