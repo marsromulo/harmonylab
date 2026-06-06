@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { setOrderCheckoutSession } from "@/lib/checkout";
 import { ensureCustomerProfile } from "@/lib/customers";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
 import { getSiteUrl, getStripe, getStripeShippingDetails } from "@/lib/stripe";
@@ -356,17 +357,13 @@ export async function payPendingOrderAction(orderId: string) {
     throw new Error("Unable to create Stripe checkout session.");
   }
 
-  const { error: paymentError } = await supabase
-    .from("orders")
-    .update({
-      payment_method: "credit_card",
-      payment_status: "unpaid",
-      stripe_checkout_session_id: session.id,
-    })
-    .eq("id", orderRow.id)
-    .eq("customer_id", profile.id);
-
-  if (paymentError) {
+  try {
+    await setOrderCheckoutSession({
+      customerId: profile.id,
+      orderId: orderRow.id,
+      sessionId: session.id,
+    });
+  } catch {
     redirect("/account?error=payment-session-failed");
   }
 

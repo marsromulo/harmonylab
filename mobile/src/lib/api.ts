@@ -1,0 +1,71 @@
+import type { Session } from '@supabase/supabase-js';
+
+const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '');
+
+export type MobileAddress = {
+  address_line1: string;
+  address_line2: string | null;
+  city: string;
+  country: string;
+  first_name: string | null;
+  id: string;
+  is_default: boolean;
+  label: string | null;
+  last_name: string | null;
+  phone: string | null;
+  postal_code: string | null;
+  region: string | null;
+};
+
+export type MobileOrder = {
+  created_at: string;
+  currency: string;
+  fulfillment_carrier: string | null;
+  fulfillment_tracking_number: string | null;
+  fulfillment_tracking_url: string | null;
+  id: string;
+  order_items: { product_name: string; quantity: number }[];
+  order_number: string;
+  payment_status: string;
+  status: string;
+  total_cents: number;
+};
+
+export type MobileAccount = {
+  addresses: MobileAddress[];
+  orders: MobileOrder[];
+  profile: {
+    firstName: string | null;
+    fullName: string | null;
+    lastName: string | null;
+    referralId: string | null;
+    referralPointsBalance: number;
+  };
+};
+
+export async function apiRequest<T>(
+  path: string,
+  session: Session,
+  init?: RequestInit,
+): Promise<T> {
+  if (!configuredApiUrl) {
+    throw new Error('EXPO_PUBLIC_API_URL is not configured.');
+  }
+
+  const response = await fetch(`${configuredApiUrl}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+      ...init?.headers,
+    },
+  });
+  const data = (await response.json()) as T & { error?: string };
+
+  if (!response.ok) {
+    throw new Error(data.error || 'The request could not be completed.');
+  }
+
+  return data;
+}
+

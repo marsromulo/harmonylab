@@ -21,10 +21,10 @@ export async function SiteHeader({ active = "home" }: SiteHeaderProps) {
     <header className="site-header">
       <Link className="site-brand" href="/" aria-label="Harmony Lab Beauty home">
         <Image
-          src="/layout3/logo-brand.png"
+          src="/layout3/logo-final.png"
           alt="Harmony Lab Beauty"
-          width={270}
-          height={50}
+          width={1145}
+          height={247}
           priority
           style={{ height: "auto", width: "100%" }}
           unoptimized

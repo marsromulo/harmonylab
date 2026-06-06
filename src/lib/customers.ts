@@ -1,5 +1,5 @@
 import type { User } from "@supabase/supabase-js";
-import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
+import { createSupabaseAuthServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 export type CustomerProfile = {
   id: string;
@@ -128,7 +128,7 @@ export async function ensureCustomerProfile(
   user: User,
   values?: { firstName?: string; fullName?: string; lastName?: string; phone?: string },
 ) {
-  const supabase = await createSupabaseAuthServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const email = user.email ?? null;
   const firstName = values?.firstName ?? (typeof user.user_metadata?.first_name === "string" ? user.user_metadata.first_name : null);
   const lastName = values?.lastName ?? (typeof user.user_metadata?.last_name === "string" ? user.user_metadata.last_name : null);

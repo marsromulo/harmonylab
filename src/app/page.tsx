@@ -201,7 +201,12 @@ export default function Home() {
         </section>
 
         <section className="layout3-about">
-          <Image src="/layout3/about-products.jpg" alt="Harmony Lab products" width={672} height={240} />
+          <Image
+            src="/layout3/about-us-banner.png"
+            alt="Harmony Lab Vitamin C skincare collection"
+            width={1657}
+            height={949}
+          />
           <div className="layout3-about-text">
             <p className="layout3-eyebrow">About Harmony Lab</p>
             <h2>

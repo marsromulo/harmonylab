@@ -1,0 +1,29 @@
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+
+import { Brand } from '@/constants/brand';
+import { AuthProvider } from '@/providers/auth-provider';
+import { CartProvider } from '@/providers/cart-provider';
+import '@/global.css';
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <CartProvider>
+        <StatusBar style="dark" />
+        <Stack
+          screenOptions={{
+            contentStyle: { backgroundColor: Brand.cream },
+            headerShadowVisible: false,
+            headerStyle: { backgroundColor: Brand.cream },
+            headerTintColor: Brand.darkGreen,
+          }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="checkout" options={{ title: 'Checkout' }} />
+          <Stack.Screen name="checkout-complete" options={{ title: 'Order confirmation' }} />
+          <Stack.Screen name="product/[slug]" options={{ title: 'Product' }} />
+        </Stack>
+      </CartProvider>
+    </AuthProvider>
+  );
+}

@@ -2,8 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { getCartSummary } from "@/lib/cart";
+import { createCheckoutOrder, setOrderCheckoutSession } from "@/lib/checkout";
 import { ensureCustomerProfile, upsertDefaultCustomerAddress } from "@/lib/customers";
-import { calculateShippingCents } from "@/lib/shipping";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
 import { getSiteUrl, getStripe, getStripeShippingDetails } from "@/lib/stripe";
 
@@ -24,16 +24,6 @@ const supportedShippingCountries = new Set(["Hong Kong"]);
 
 function getShippingCountry(value: string) {
   return supportedShippingCountries.has(value) ? value : "Hong Kong";
-}
-
-async function getNextOrderNumber(supabase: Awaited<ReturnType<typeof createSupabaseAuthServerClient>>) {
-  const { data, error } = await supabase.rpc("get_next_order_number");
-
-  if (error || typeof data !== "string") {
-    throw new Error(`Unable to generate order number: ${error?.message ?? "Invalid response."}`);
-  }
-
-  return data;
 }
 
 export async function createCheckoutOrderAction(formData: FormData) {
@@ -125,85 +115,26 @@ export async function createCheckoutOrderAction(formData: FormData) {
   }
 
   const currency = cart.lines[0]?.product.currency ?? "HKD";
-  const shippingCents = await calculateShippingCents({
-    country: shippingCountry,
-    region: shippingRegion,
-    subtotalCents: cart.subtotalCents,
-  });
-  const discountCents = 0;
-  const totalCents = Math.max(cart.subtotalCents + shippingCents - discountCents, 0);
-  const orderNumber = await getNextOrderNumber(supabase);
-  let referralOwnerCustomerId: string | null = null;
-  let referralOwnerMemberId: string | null = null;
-
-  if (referralCode) {
-    const { data: memberId, error: memberError } = await supabase.rpc("get_referral_owner_member_id", {
-      p_referral_code: referralCode,
-    });
-
-    if (memberError) {
-      console.warn("Unable to resolve member referral code:", memberError.message);
-    } else if (typeof memberId === "string") {
-      referralOwnerMemberId = memberId;
-    }
-
-    if (!referralOwnerMemberId) {
-      const { data, error } = await supabase.rpc("get_referral_owner_customer_id", { referral_code: referralCode });
-
-      if (error) {
-        console.warn("Unable to resolve customer referral code:", error.message);
-      } else if (typeof data === "string" && data !== customer.id) {
-        referralOwnerCustomerId = data;
-      }
-    }
-  }
-
-  const { data: order, error: orderError } = await supabase
-    .from("orders")
-    .insert({
-      order_number: orderNumber,
-      customer_id: customer.id,
-      customer_email: email,
-      customer_name: fullName || customer.fullName || user.email,
-      currency,
-      delivery_notes: deliveryNotes || null,
-      shipping_address_line1: shippingAddressLine1,
-      shipping_address_line2: shippingAddressLine2 || null,
-      shipping_city: shippingCity,
-      shipping_country: shippingCountry,
-      shipping_postal_code: shippingPostalCode || null,
-      shipping_region: shippingRegion || null,
-      referral_code_entered: referralCode || null,
-      referral_owner_customer_id: referralOwnerCustomerId,
-      referral_owner_member_id: referralOwnerMemberId,
-      payment_method: paymentMethod,
-      payment_status: "unpaid",
-      subtotal_cents: cart.subtotalCents,
-      shipping_cents: shippingCents,
-      discount_cents: discountCents,
-      total_cents: totalCents,
-    })
-    .select("id,order_number")
-    .single();
-
-  if (orderError) {
-    throw new Error(`Unable to create order: ${orderError.message}`);
-  }
-
-  const { error: itemError } = await supabase.from("order_items").insert(
-    cart.lines.map((line) => ({
-      order_id: order.id,
-      product_id: line.product.id,
-      product_name: line.product.name,
+  const order = await createCheckoutOrder({
+    authUserId: user.id,
+    customerEmail: email ?? null,
+    customerId: customer.id,
+    customerName: fullName || customer.fullName || user.email || "Customer",
+    deliveryNotes,
+    expectedCurrency: currency,
+    expectedSubtotalCents: cart.subtotalCents,
+    lines: cart.lines.map((line) => ({
+      productId: line.product.id,
       quantity: line.quantity,
-      unit_price_cents: line.product.priceCents,
-      line_total_cents: line.lineTotalCents,
     })),
-  );
-
-  if (itemError) {
-    throw new Error(`Unable to create order items: ${itemError.message}`);
-  }
+    referralCode,
+    shippingAddressLine1,
+    shippingAddressLine2,
+    shippingCity,
+    shippingCountry,
+    shippingPostalCode,
+    shippingRegion,
+  });
 
   const stripe = getStripe();
   const siteUrl = getSiteUrl();
@@ -218,14 +149,14 @@ export async function createCheckoutOrderAction(formData: FormData) {
     quantity: line.quantity,
   }));
 
-  if (shippingCents > 0) {
+  if (order.shippingCents > 0) {
     stripeLineItems.push({
       price_data: {
-        currency: currency.toLowerCase(),
+        currency: order.currency.toLowerCase(),
         product_data: {
           name: "Shipping",
         },
-        unit_amount: shippingCents,
+        unit_amount: order.shippingCents,
       },
       quantity: 1,
     });
@@ -236,7 +167,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
     line_items: stripeLineItems,
     metadata: {
       order_id: order.id,
-      order_number: order.order_number,
+      order_number: order.orderNumber,
     },
     mode: "payment",
     payment_method_types: ["card"],
@@ -252,7 +183,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
         region: shippingRegion,
       }),
     },
-    success_url: `${siteUrl}/checkout/complete?order=${encodeURIComponent(order.order_number)}&session_id={CHECKOUT_SESSION_ID}`,
+    success_url: `${siteUrl}/checkout/complete?order=${encodeURIComponent(order.orderNumber)}&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${siteUrl}/checkout?error=payment-cancelled`,
   });
 
@@ -260,14 +191,11 @@ export async function createCheckoutOrderAction(formData: FormData) {
     throw new Error("Unable to create Stripe checkout session.");
   }
 
-  const { error: paymentError } = await supabase
-    .from("orders")
-    .update({ stripe_checkout_session_id: session.id })
-    .eq("id", order.id);
-
-  if (paymentError) {
-    throw new Error(`Unable to save Stripe checkout session: ${paymentError.message}`);
-  }
+  await setOrderCheckoutSession({
+    customerId: customer.id,
+    orderId: order.id,
+    sessionId: session.id,
+  });
 
   redirect(session.url);
 }
