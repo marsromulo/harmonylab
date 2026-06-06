@@ -27,7 +27,14 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
   return (
     <main className="admin-login-page">
       <section className="admin-login-card">
-        <Image src="/asset/logo.png" alt="Harmony Lab" width={220} height={40} priority unoptimized />
+        <Image
+          src="/hl-logo.png"
+          alt="Harmony Lab"
+          width={1089}
+          height={287}
+          priority
+          unoptimized
+        />
         <div>
           <p className="admin-eyebrow">ADMIN ACCESS</p>
           <h1>Sign in</h1>
