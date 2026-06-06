@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ensureCustomerProfile } from "@/lib/customers";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
-import { getSiteUrl, getStripe } from "@/lib/stripe";
+import { getSiteUrl, getStripe, getStripeShippingDetails } from "@/lib/stripe";
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -25,12 +25,26 @@ function getRedirectUrl(path: string, key: "error" | "success", value: string) {
   return `${path}?${key}=${encodeURIComponent(value)}`;
 }
 
+const supportedShippingCountries = new Set(["Hong Kong"]);
+
+function getShippingCountry(value: string) {
+  return supportedShippingCountries.has(value) ? value : "Hong Kong";
+}
+
 type PayableOrderRow = {
   id: string;
   order_number: string;
+  customer_name: string | null;
   customer_email: string | null;
   currency: string;
   payment_status: string;
+  shipping_address_line1: string | null;
+  shipping_address_line2: string | null;
+  shipping_city: string | null;
+  shipping_cents: number;
+  shipping_country: string | null;
+  shipping_postal_code: string | null;
+  shipping_region: string | null;
   status: string;
 };
 
@@ -60,7 +74,7 @@ function getAddressPayload(formData: FormData) {
     city,
     region: getString(formData, "region") || null,
     postal_code: getString(formData, "postal_code") || null,
-    country: getString(formData, "country") || "Hong Kong",
+    country: getShippingCountry(getString(formData, "country")),
     is_default: formData.get("is_default") === "on",
   };
 }
@@ -257,7 +271,9 @@ export async function payPendingOrderAction(orderId: string) {
   const { profile, supabase } = await requireCustomerProfile();
   const { data: order, error: orderError } = await supabase
     .from("orders")
-    .select("id,order_number,customer_email,currency,payment_status,status")
+    .select(
+      "id,order_number,customer_name,customer_email,currency,payment_status,shipping_address_line1,shipping_address_line2,shipping_city,shipping_cents,shipping_country,shipping_postal_code,shipping_region,status",
+    )
     .eq("id", orderId)
     .eq("customer_id", profile.id)
     .maybeSingle();
@@ -287,24 +303,51 @@ export async function payPendingOrderAction(orderId: string) {
 
   const stripe = getStripe();
   const siteUrl = getSiteUrl();
-  const session = await stripe.checkout.sessions.create({
-    customer_email: orderRow.customer_email ?? profile.email ?? undefined,
-    line_items: ((items ?? []) as unknown as PayableOrderItemRow[]).map((item) => ({
+  const stripeLineItems = ((items ?? []) as unknown as PayableOrderItemRow[]).map((item) => ({
+    price_data: {
+      currency: orderRow.currency.toLowerCase(),
+      product_data: {
+        name: item.product_name,
+      },
+      unit_amount: item.unit_price_cents,
+    },
+    quantity: item.quantity,
+  }));
+
+  if (orderRow.shipping_cents > 0) {
+    stripeLineItems.push({
       price_data: {
         currency: orderRow.currency.toLowerCase(),
         product_data: {
-          name: item.product_name,
+          name: "Shipping",
         },
-        unit_amount: item.unit_price_cents,
+        unit_amount: orderRow.shipping_cents,
       },
-      quantity: item.quantity,
-    })),
+      quantity: 1,
+    });
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    customer_email: orderRow.customer_email ?? profile.email ?? undefined,
+    line_items: stripeLineItems,
     metadata: {
       order_id: orderRow.id,
       order_number: orderRow.order_number,
     },
     mode: "payment",
     payment_method_types: ["card"],
+    payment_intent_data: {
+      shipping: getStripeShippingDetails({
+        addressLine1: orderRow.shipping_address_line1,
+        addressLine2: orderRow.shipping_address_line2,
+        city: orderRow.shipping_city,
+        country: orderRow.shipping_country,
+        name: orderRow.customer_name ?? profile.fullName ?? profile.email,
+        phone: profile.phone,
+        postalCode: orderRow.shipping_postal_code,
+        region: orderRow.shipping_region,
+      }),
+    },
     success_url: `${siteUrl}/checkout/success?order=${encodeURIComponent(orderRow.order_number)}&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${siteUrl}/account?error=payment-cancelled`,
   });

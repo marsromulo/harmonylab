@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { getProductsByIds, type StoreProduct } from "@/lib/products";
 
-const CART_COOKIE = "harmonylab_cart";
+export const CART_COOKIE = "harmonylab_cart";
 const MAX_CART_QUANTITY = 20;
 
 export type CartItem = {

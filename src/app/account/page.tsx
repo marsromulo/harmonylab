@@ -45,6 +45,7 @@ const successMessages: Record<string, string> = {
 };
 
 const regionOptions = ["Hong Kong", "Kowloon", "New Territories"];
+const countryOptions = ["Hong Kong", "Philippines"];
 
 function AddressFields({ address, profile }: { address?: CustomerAddress; profile?: { firstName: string | null; lastName: string | null; phone: string | null } | null }) {
   return (
@@ -98,7 +99,13 @@ function AddressFields({ address, profile }: { address?: CustomerAddress; profil
         </label>
         <label>
           Country
-          <input name="country" required defaultValue={address?.country ?? "Hong Kong"} />
+          <select name="country" required defaultValue="Hong Kong">
+            {countryOptions.map((country) => (
+              <option key={country} value={country} disabled={country === "Philippines"}>
+                {country}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
       <label className="account-checkbox-row">

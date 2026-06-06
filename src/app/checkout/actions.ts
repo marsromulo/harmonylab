@@ -1,20 +1,15 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { clearCart, getCartSummary } from "@/lib/cart";
+import { getCartSummary } from "@/lib/cart";
 import { ensureCustomerProfile, upsertDefaultCustomerAddress } from "@/lib/customers";
+import { calculateShippingCents } from "@/lib/shipping";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
-import { getSiteUrl, getStripe } from "@/lib/stripe";
+import { getSiteUrl, getStripe, getStripeShippingDetails } from "@/lib/stripe";
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
-}
-
-function getOrderNumber() {
-  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  const randomPart = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `HL-${datePart}-${randomPart}`;
 }
 
 function normalizeReferralCode(value: string) {
@@ -23,6 +18,22 @@ function normalizeReferralCode(value: string) {
 
 function getPaymentMethod(value: string) {
   return value === "alipay_hk" ? "alipay_hk" : "credit_card";
+}
+
+const supportedShippingCountries = new Set(["Hong Kong"]);
+
+function getShippingCountry(value: string) {
+  return supportedShippingCountries.has(value) ? value : "Hong Kong";
+}
+
+async function getNextOrderNumber(supabase: Awaited<ReturnType<typeof createSupabaseAuthServerClient>>) {
+  const { data, error } = await supabase.rpc("get_next_order_number");
+
+  if (error || typeof data !== "string") {
+    throw new Error(`Unable to generate order number: ${error?.message ?? "Invalid response."}`);
+  }
+
+  return data;
 }
 
 export async function createCheckoutOrderAction(formData: FormData) {
@@ -51,7 +62,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
   const shippingCity = getString(formData, "shipping_city");
   const shippingRegion = getString(formData, "shipping_region");
   const shippingPostalCode = getString(formData, "shipping_postal_code");
-  const shippingCountry = getString(formData, "shipping_country") || "Hong Kong";
+  const shippingCountry = getShippingCountry(getString(formData, "shipping_country"));
   const deliveryNotes = getString(formData, "delivery_notes");
   const customerAddressId = getString(formData, "customer_address_id");
   const paymentMethod = getPaymentMethod(getString(formData, "payment_method"));
@@ -114,10 +125,14 @@ export async function createCheckoutOrderAction(formData: FormData) {
   }
 
   const currency = cart.lines[0]?.product.currency ?? "HKD";
-  const shippingCents = 0;
+  const shippingCents = await calculateShippingCents({
+    country: shippingCountry,
+    region: shippingRegion,
+    subtotalCents: cart.subtotalCents,
+  });
   const discountCents = 0;
   const totalCents = Math.max(cart.subtotalCents + shippingCents - discountCents, 0);
-  const orderNumber = getOrderNumber();
+  const orderNumber = await getNextOrderNumber(supabase);
   let referralOwnerCustomerId: string | null = null;
   let referralOwnerMemberId: string | null = null;
 
@@ -192,25 +207,52 @@ export async function createCheckoutOrderAction(formData: FormData) {
 
   const stripe = getStripe();
   const siteUrl = getSiteUrl();
+  const stripeLineItems = cart.lines.map((line) => ({
+    price_data: {
+      currency: line.product.currency.toLowerCase(),
+      product_data: {
+        name: line.product.name,
+      },
+      unit_amount: line.product.priceCents,
+    },
+    quantity: line.quantity,
+  }));
+
+  if (shippingCents > 0) {
+    stripeLineItems.push({
+      price_data: {
+        currency: currency.toLowerCase(),
+        product_data: {
+          name: "Shipping",
+        },
+        unit_amount: shippingCents,
+      },
+      quantity: 1,
+    });
+  }
+
   const session = await stripe.checkout.sessions.create({
     customer_email: email ?? undefined,
-    line_items: cart.lines.map((line) => ({
-      price_data: {
-        currency: line.product.currency.toLowerCase(),
-        product_data: {
-          name: line.product.name,
-        },
-        unit_amount: line.product.priceCents,
-      },
-      quantity: line.quantity,
-    })),
+    line_items: stripeLineItems,
     metadata: {
       order_id: order.id,
       order_number: order.order_number,
     },
     mode: "payment",
     payment_method_types: ["card"],
-    success_url: `${siteUrl}/checkout/success?order=${encodeURIComponent(order.order_number)}&session_id={CHECKOUT_SESSION_ID}`,
+    payment_intent_data: {
+      shipping: getStripeShippingDetails({
+        addressLine1: shippingAddressLine1,
+        addressLine2: shippingAddressLine2,
+        city: shippingCity,
+        country: shippingCountry,
+        name: fullName || customer.fullName || user.email,
+        phone,
+        postalCode: shippingPostalCode,
+        region: shippingRegion,
+      }),
+    },
+    success_url: `${siteUrl}/checkout/complete?order=${encodeURIComponent(order.order_number)}&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${siteUrl}/checkout?error=payment-cancelled`,
   });
 
@@ -227,6 +269,5 @@ export async function createCheckoutOrderAction(formData: FormData) {
     throw new Error(`Unable to save Stripe checkout session: ${paymentError.message}`);
   }
 
-  await clearCart();
   redirect(session.url);
 }

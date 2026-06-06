@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { CustomerAddress, CustomerProfile } from "@/lib/customers";
 
 const regionOptions = ["Hong Kong", "Kowloon", "New Territories"];
+const countryOptions = ["Hong Kong", "Philippines"];
 
 function getAddressLabel(address: CustomerAddress) {
   return address.label || [address.addressLine1, address.city, address.region].filter(Boolean).join(", ");
@@ -92,7 +93,13 @@ export function CheckoutAddressFields({
         </label>
         <label>
           Country
-          <input name="shipping_country" required defaultValue={selectedAddress?.country ?? "Hong Kong"} />
+          <select name="shipping_country" required defaultValue="Hong Kong">
+            {countryOptions.map((country) => (
+              <option key={country} value={country} disabled={country === "Philippines"}>
+                {country}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
       <label>

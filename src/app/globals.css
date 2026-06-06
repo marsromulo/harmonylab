@@ -1431,14 +1431,41 @@ body {
 }
 
 .checkout-place-order {
+  align-items: center;
   background: var(--orange);
   border-radius: 4px;
   color: #fff;
   cursor: pointer;
+  display: inline-flex;
   font-size: 12px;
   font-weight: 800;
+  gap: 9px;
   height: 38px;
+  justify-content: center;
   width: 100%;
+}
+
+.checkout-place-order:disabled {
+  cursor: wait;
+  opacity: 0.78;
+}
+
+.checkout-button-spinner {
+  animation: checkout-button-spin 0.7s linear infinite;
+  border: 2px solid #fff;
+  border-right-color: transparent;
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: inline-block;
+  flex: 0 0 16px;
+  height: 16px;
+  width: 16px;
+}
+
+@keyframes checkout-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .checkout-referral {
@@ -4101,7 +4128,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 6px;
   display: grid;
-  grid-template-columns: 53% 47%;
+  grid-template-columns: 45% 55%;
   height: 206px;
   overflow: hidden;
 }
@@ -4159,6 +4186,12 @@ body {
   place-items: center;
   position: relative;
   text-align: center;
+}
+
+.layout3-benefit > div {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
 }
 
 .layout3-benefit:not(:last-child)::after {

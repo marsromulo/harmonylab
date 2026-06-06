@@ -5,12 +5,14 @@ import { loginCustomerAction, registerCustomerAction } from "@/app/account/actio
 import { createCheckoutOrderAction } from "@/app/checkout/actions";
 import { CheckoutAddressFields } from "@/components/CheckoutAddressFields";
 import { CheckoutPaymentMethod } from "@/components/CheckoutPaymentMethod";
+import { CheckoutPlaceOrderButton } from "@/components/CheckoutPlaceOrderButton";
 import { ReferralCodeField } from "@/components/ReferralCodeField";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getCartSummary } from "@/lib/cart";
 import { getCurrentCustomer, getCustomerAddresses } from "@/lib/customers";
 import { formatProductPrice } from "@/lib/products";
+import { calculateShippingCents } from "@/lib/shipping";
 
 type CheckoutPageProps = {
   searchParams: Promise<{
@@ -40,6 +42,13 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
   const [{ error, success }, cart, { profile, user }] = await Promise.all([searchParams, getCartSummary(), getCurrentCustomer()]);
   const addresses = profile ? await getCustomerAddresses(profile.id) : [];
   const currency = cart.lines[0]?.product.currency ?? "HKD";
+  const shippingCents = cart.lines.length > 0
+    ? await calculateShippingCents({
+        country: "Hong Kong",
+        subtotalCents: cart.subtotalCents,
+      })
+    : 0;
+  const totalCents = cart.subtotalCents + shippingCents;
   const errorMessage = error ? errorMessages[error] : null;
   const successMessage = success ? successMessages[success] : null;
 
@@ -118,11 +127,11 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
             </form>
           </section>
         ) : (
-          <section className="checkout-layout">
-            <form action={createCheckoutOrderAction} className="checkout-form" id="checkout-order-form">
+          <form action={createCheckoutOrderAction} className="checkout-layout" id="checkout-order-form">
+            <div className="checkout-form">
               <h3>Delivery Details</h3>
               <CheckoutAddressFields addresses={addresses} profile={profile} />
-            </form>
+            </div>
 
             <div className="checkout-side">
               <aside className="checkout-summary">
@@ -151,11 +160,11 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
                 </div>
                 <div className="checkout-total">
                   <span>Shipping</span>
-                  <strong>{formatProductPrice({ currency, priceCents: 0 })}</strong>
+                  <strong>{formatProductPrice({ currency, priceCents: shippingCents })}</strong>
                 </div>
                 <div className="checkout-total grand">
                   <span>Total</span>
-                  <strong>{formatProductPrice({ currency, priceCents: cart.subtotalCents })}</strong>
+                  <strong>{formatProductPrice({ currency, priceCents: totalCents })}</strong>
                 </div>
                 <Link className="cart-clear" href="/cart">
                   Edit cart
@@ -163,11 +172,9 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
               </aside>
               <CheckoutPaymentMethod formId="checkout-order-form" />
               <ReferralCodeField formId="checkout-order-form" />
-              <button className="checkout-place-order" form="checkout-order-form" type="submit">
-                PLACE ORDER
-              </button>
+              <CheckoutPlaceOrderButton />
             </div>
-          </section>
+          </form>
         )}
       </main>
       <SiteFooter />

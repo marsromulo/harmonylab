@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 const referralStorageKey = "harmony_referral_code";
 
@@ -9,6 +9,7 @@ export function normalizeReferralCode(value: string) {
 }
 
 export function ReferralCodeField({ formId }: { formId: string }) {
+  const [manualCode, setManualCode] = useState("");
   const savedCode = useSyncExternalStore(
     (onStoreChange) => {
       window.addEventListener("storage", onStoreChange);
@@ -22,7 +23,7 @@ export function ReferralCodeField({ formId }: { formId: string }) {
     return (
       <label className="checkout-referral">
         Referral code
-        <input disabled value={savedCode} />
+        <input key="saved-referral-code" disabled value={savedCode} />
         <input form={formId} name="referral_code" type="hidden" value={savedCode} />
       </label>
     );
@@ -31,7 +32,14 @@ export function ReferralCodeField({ formId }: { formId: string }) {
   return (
     <label className="checkout-referral">
       Referral code
-      <input form={formId} name="referral_code" placeholder="Optional" />
+      <input
+        key="manual-referral-code"
+        form={formId}
+        name="referral_code"
+        placeholder="Optional"
+        value={manualCode}
+        onChange={(event) => setManualCode(normalizeReferralCode(event.target.value))}
+      />
     </label>
   );
 }

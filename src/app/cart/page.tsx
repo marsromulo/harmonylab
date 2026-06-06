@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { connection } from "next/server";
-import { clearCartAction, removeCartItemAction, updateCartItemAction } from "@/app/cart/actions";
+import { clearCartAction, removeCartItemAction } from "@/app/cart/actions";
+import { CartQuantityForm } from "@/components/CartQuantityForm";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getCartSummary } from "@/lib/cart";
@@ -47,16 +48,7 @@ export default async function CartPage() {
                     </h3>
                     <p>{formatProductPrice(line.product)}</p>
                     <div className="cart-item-controls">
-                      <form action={updateCartItemAction} className="cart-quantity-form">
-                        <input name="product_id" type="hidden" value={line.product.id} />
-                        <label>
-                          <span>Qty</span>
-                          <input min="1" name="quantity" type="number" defaultValue={line.quantity} />
-                        </label>
-                        <button className="cart-update" type="submit">
-                          Update
-                        </button>
-                      </form>
+                      <CartQuantityForm productId={line.product.id} quantity={line.quantity} />
                       <form action={removeCartItemAction} className="cart-remove-form">
                         <input name="product_id" type="hidden" value={line.product.id} />
                         <button className="cart-remove" type="submit" aria-label={`Remove ${line.product.name}`} title="Remove item">
