@@ -2,7 +2,7 @@
   "expo": {
     "name": "HarmonyLab",
     "slug": "harmonylab",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/harmonylab-app-icon.png",
     "scheme": "harmonylab",
@@ -20,7 +20,7 @@
       },
       "package": "com.harmonylab.mobile",
       "predictiveBackGestureEnabled": false,
-      "versionCode": 4
+      "versionCode": 5
     },
     "web": {
       "output": "static",
@@ -28,6 +28,14 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-notifications",
+        {
+          "color": "#e87235",
+          "defaultChannel": "orders",
+          "icon": "./assets/images/android-icon-monochrome.png"
+        }
+      ],
       [
         "expo-splash-screen",
         {

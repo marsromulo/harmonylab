@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { router } from 'expo-router';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -23,6 +24,7 @@ import {
 } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
+import { useNotifications } from '@/providers/notification-provider';
 
 type FormMessage = { text: string; type: 'error' | 'success' };
 
@@ -47,6 +49,7 @@ function formatOrderTotal(order: MobileOrder) {
 
 export default function AccountScreen() {
   const { loading: sessionLoading, session } = useAuth();
+  const { notifications, unregisterDevice } = useNotifications();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -304,25 +307,59 @@ export default function AccountScreen() {
               <Text style={styles.sectionTitle}>Recent orders</Text>
               {account?.orders.length ? (
                 account.orders.map((order) => (
-                  <View key={order.id} style={styles.card}>
+                  <Pressable
+                    key={order.id}
+                    onPress={() =>
+                      router.push({ pathname: '/order/[id]', params: { id: order.id } })
+                    }
+                    style={styles.card}>
                     <View style={styles.sectionHeading}>
                       <Text style={styles.cardTitle}>{order.order_number}</Text>
-                      <Text style={styles.orderStatus}>{order.payment_status.toUpperCase()}</Text>
+                      <Text style={styles.orderStatus}>{order.status.toUpperCase()}</Text>
                     </View>
                     <Text style={styles.cardText}>
                       {new Date(order.created_at).toLocaleDateString()} · {formatOrderTotal(order)}
                       {'\n'}
                       {order.order_items.map((item) => `${item.quantity}× ${item.product_name}`).join(', ')}
                     </Text>
-                  </View>
+                  </Pressable>
                 ))
               ) : (
                 <Text style={styles.emptyText}>Your orders will appear here.</Text>
               )}
+
+              {notifications.length ? (
+                <>
+                  <Text style={styles.sectionTitle}>Notifications</Text>
+                  {notifications.slice(0, 10).map((notification) => (
+                    <Pressable
+                      key={notification.id}
+                      onPress={() => {
+                        if (notification.order_id) {
+                          router.push({
+                            pathname: '/order/[id]',
+                            params: { id: notification.order_id },
+                          });
+                        }
+                      }}
+                      style={[styles.card, !notification.read_at && styles.unreadCard]}>
+                      <Text style={styles.cardTitle}>{notification.title}</Text>
+                      <Text style={styles.cardText}>{notification.body}</Text>
+                      <Text style={styles.notificationDate}>
+                        {new Date(notification.created_at).toLocaleString()}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </>
+              ) : null}
             </>
           )}
 
-          <Pressable onPress={() => void supabase.auth.signOut()} style={styles.outlineButton}>
+          <Pressable
+            onPress={() => {
+              void unregisterDevice().finally(() => supabase.auth.signOut());
+            }}
+            style={styles.outlineButton}>
             <Text style={styles.outlineButtonText}>SIGN OUT</Text>
           </Pressable>
         </ScrollView>
@@ -458,6 +495,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
   },
   message: { borderRadius: 14, borderWidth: 1, padding: 14 },
+  notificationDate: { color: Brand.muted, fontSize: 11 },
   orderStatus: { color: Brand.orange, fontSize: 10, fontWeight: '800' },
   outlineButton: {
     alignItems: 'center',
@@ -476,4 +514,5 @@ const styles = StyleSheet.create({
   successText: { color: Brand.darkGreen, fontSize: 14, fontWeight: '700' },
   switchText: { color: Brand.darkGreen, fontSize: 14, fontWeight: '700', padding: 8, textAlign: 'center' },
   title: { color: Brand.darkGreen, fontSize: 32, fontWeight: '800' },
+  unreadCard: { borderColor: Brand.orange, borderWidth: 1 },
 });

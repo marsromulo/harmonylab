@@ -69,6 +69,44 @@ export type MobileOrder = {
   total_cents: number;
 };
 
+export type MobileOrderDetails = Omit<MobileOrder, 'order_items'> & {
+  delivered_at: string | null;
+  delivery_notes: string | null;
+  discount_cents: number;
+  order_items: {
+    id: string;
+    line_total_cents: number;
+    product_name: string;
+    quantity: number;
+    unit_price_cents: number;
+  }[];
+  paid_at: string | null;
+  shipped_at: string | null;
+  shipping_address_line1: string | null;
+  shipping_address_line2: string | null;
+  shipping_city: string | null;
+  shipping_country: string | null;
+  shipping_cents: number;
+  shipping_postal_code: string | null;
+  shipping_region: string | null;
+  subtotal_cents: number;
+};
+
+export type MobileNotification = {
+  body: string;
+  created_at: string;
+  data: {
+    orderId?: string;
+    orderNumber?: string;
+    url?: string;
+  };
+  id: string;
+  notification_type: 'order_created' | 'order_status';
+  order_id: string | null;
+  read_at: string | null;
+  title: string;
+};
+
 export type MobileAccount = {
   addresses: MobileAddress[];
   orders: MobileOrder[];

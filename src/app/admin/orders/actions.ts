@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin-auth";
 import type { OrderStatus } from "@/lib/orders";
+import { createAndSendCustomerNotification } from "@/lib/push-notifications";
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -40,10 +41,36 @@ export async function updateOrderFulfillmentAction(orderId: string, formData: Fo
     shipped_at: now,
     ...(status === "delivered" ? { delivered_at: now } : {}),
   };
+  const { data: existingOrder, error: existingOrderError } = await supabase
+    .from("orders")
+    .select("customer_id,order_number,status")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (existingOrderError || !existingOrder) {
+    redirect(`/admin/orders/${orderId}?error=fulfillment-update-failed`);
+  }
+
   const { error } = await supabase.from("orders").update(payload).eq("id", orderId);
 
   if (error) {
     redirect(`/admin/orders/${orderId}?error=fulfillment-update-failed`);
+  }
+
+  if (existingOrder.customer_id && existingOrder.status !== status) {
+    const statusLabel = status === "delivered" ? "delivered" : "shipped";
+
+    await createAndSendCustomerNotification({
+      body: `Order ${existingOrder.order_number} has been ${statusLabel}. Tap to view the latest details.`,
+      customerId: existingOrder.customer_id,
+      notificationKey: `order-status:${orderId}:${status}`,
+      orderId,
+      orderNumber: existingOrder.order_number,
+      title: status === "delivered" ? "Order delivered" : "Order shipped",
+      type: "order_status",
+    }).catch((notificationError) => {
+      console.error("Unable to send order status push notification:", notificationError);
+    });
   }
 
   revalidatePath("/admin/orders");

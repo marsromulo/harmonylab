@@ -4,9 +4,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Brand } from '@/constants/brand';
 import { useCart } from '@/providers/cart-provider';
+import { useNotifications } from '@/providers/notification-provider';
 
 export default function TabLayout() {
   const { itemCount } = useCart();
+  const { unreadCount } = useNotifications();
   const insets = useSafeAreaInsets();
 
   return (
@@ -71,7 +73,13 @@ export default function TabLayout() {
       <Tabs.Screen
         name="account"
         options={{
-          tabBarAccessibilityLabel: 'Account',
+          tabBarAccessibilityLabel: `Account${unreadCount > 0 ? `, ${unreadCount} unread notifications` : ''}`,
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: Brand.orange,
+            color: Brand.white,
+            fontSize: 10,
+          },
           tabBarIcon: ({ color, focused }) => (
             <Ionicons color={color} name={focused ? 'person' : 'person-outline'} size={17} />
           ),

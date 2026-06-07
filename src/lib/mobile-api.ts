@@ -3,7 +3,7 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
   "Access-Control-Allow-Origin": "*",
   "Cache-Control": "no-store",
 };
@@ -66,4 +66,3 @@ export function getRequiredString(value: unknown, maximumLength = 200) {
 
   return value.trim().slice(0, maximumLength);
 }
-
