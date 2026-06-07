@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "548022486652",
+    "project_id": "harmony-lab-96d2e",
+    "storage_bucket": "harmony-lab-96d2e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:548022486652:android:ce8d2e3a46da44e39017c7",
+        "android_client_info": {
+          "package_name": "com.harmonylab.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD2G_yV-EoFJ4D8IDFIjACdd5ubtGdjlIU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

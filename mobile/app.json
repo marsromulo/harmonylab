@@ -18,6 +18,7 @@
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/harmonylab-adaptive-icon.png"
       },
+      "googleServicesFile": "./google-services.json",
       "package": "com.harmonylab.mobile",
       "predictiveBackGestureEnabled": false,
       "versionCode": 5
