@@ -150,14 +150,42 @@ function getOrderTable(data: OrderEmailData) {
     </table>`;
 }
 
-function getEmailShell(content: string) {
+function getEmailLogoUrl() {
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+    "https://harmonylab-beauty.com";
+
+  return `${siteUrl}/email/harmony-lab-icon.png`;
+}
+
+function getEmailShell(content: string, showLogo = false) {
+  const header = showLogo
+    ? `
+      <table role="presentation" style="border-collapse:collapse;margin-bottom:24px;">
+        <tr>
+          <td style="padding:0 12px 0 0;vertical-align:middle;">
+            <img
+              src="${escapeHtml(getEmailLogoUrl())}"
+              alt="Harmony Lab"
+              width="48"
+              height="48"
+              style="display:block;width:48px;height:48px;border:0;border-radius:8px;"
+            >
+          </td>
+          <td style="padding:0;vertical-align:middle;font-size:24px;font-weight:700;letter-spacing:1px;">
+            Harmony Lab
+          </td>
+        </tr>
+      </table>`
+    : `<div style="font-size:24px;font-weight:700;letter-spacing:1px;margin-bottom:24px;">HARMONY LAB</div>`;
+
   return `
     <!doctype html>
     <html lang="en">
       <body style="margin:0;background:#f4f4f4;color:#242424;font-family:Arial,sans-serif;">
         <div style="max-width:680px;margin:0 auto;padding:24px;">
           <div style="background:#ffffff;padding:32px;border-radius:12px;">
-            <div style="font-size:24px;font-weight:700;letter-spacing:1px;margin-bottom:24px;">HARMONY LAB</div>
+            ${header}
             ${content}
           </div>
         </div>
@@ -223,7 +251,7 @@ function buildCustomerMessage(data: OrderEmailData): EmailMessage {
       ${order.delivery_notes ? `<h2 style="font-size:18px;">Delivery notes</h2><p>${escapeHtml(order.delivery_notes)}</p>` : ""}
       <p>We will contact you when your order is ready for delivery.</p>
       <p>Harmony Lab</p>
-    `),
+    `, true),
     text: [
       `Hi ${customerName},`,
       "",
