@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   RefreshControl,
@@ -49,7 +50,13 @@ function formatOrderTotal(order: MobileOrder) {
 
 export default function AccountScreen() {
   const { loading: sessionLoading, session } = useAuth();
-  const { notifications, unregisterDevice } = useNotifications();
+  const {
+    notifications,
+    pushRegistrationError,
+    pushRegistrationStatus,
+    registerDevice,
+    unregisterDevice,
+  } = useNotifications();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -222,6 +229,53 @@ export default function AccountScreen() {
             <ActivityIndicator color={Brand.orange} size="large" />
           ) : (
             <>
+              <View style={styles.notificationSettingsCard}>
+                <View style={styles.sectionHeading}>
+                  <Text style={styles.cardTitle}>Phone notifications</Text>
+                  <Text
+                    style={[
+                      styles.notificationStatus,
+                      pushRegistrationStatus === 'registered'
+                        ? styles.notificationStatusEnabled
+                        : styles.notificationStatusAttention,
+                    ]}>
+                    {pushRegistrationStatus === 'registered'
+                      ? 'ENABLED'
+                      : pushRegistrationStatus === 'registering'
+                        ? 'CHECKING'
+                        : 'ACTION NEEDED'}
+                  </Text>
+                </View>
+                <Text style={styles.cardText}>
+                  {pushRegistrationStatus === 'registered'
+                    ? 'Order confirmations and shipping updates can appear in the phone notification area.'
+                    : pushRegistrationError ??
+                      'Enable notifications to receive order updates outside the app.'}
+                </Text>
+                {pushRegistrationStatus !== 'registered' ? (
+                  <Pressable
+                    disabled={pushRegistrationStatus === 'registering'}
+                    onPress={() => {
+                      if (pushRegistrationStatus === 'permission-denied') {
+                        void Linking.openSettings();
+                      } else {
+                        void registerDevice();
+                      }
+                    }}
+                    style={styles.notificationButton}>
+                    {pushRegistrationStatus === 'registering' ? (
+                      <ActivityIndicator color={Brand.white} />
+                    ) : (
+                      <Text style={styles.buttonText}>
+                        {pushRegistrationStatus === 'permission-denied'
+                          ? 'OPEN ANDROID SETTINGS'
+                          : 'ENABLE NOTIFICATIONS'}
+                      </Text>
+                    )}
+                  </Pressable>
+                ) : null}
+              </View>
+
               <View style={styles.sectionHeading}>
                 <Text style={styles.sectionTitle}>Saved addresses</Text>
                 <Pressable onPress={() => setShowAddressForm((current) => !current)}>
@@ -496,6 +550,24 @@ const styles = StyleSheet.create({
   },
   message: { borderRadius: 14, borderWidth: 1, padding: 14 },
   notificationDate: { color: Brand.muted, fontSize: 11 },
+  notificationButton: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: Brand.orange,
+    borderRadius: 999,
+    justifyContent: 'center',
+    minHeight: 42,
+    paddingHorizontal: 18,
+  },
+  notificationSettingsCard: {
+    backgroundColor: Brand.lightGreen,
+    borderRadius: 18,
+    gap: 10,
+    padding: 18,
+  },
+  notificationStatus: { fontSize: 10, fontWeight: '800' },
+  notificationStatusAttention: { color: '#9d4335' },
+  notificationStatusEnabled: { color: Brand.darkGreen },
   orderStatus: { color: Brand.orange, fontSize: 10, fontWeight: '800' },
   outlineButton: {
     alignItems: 'center',

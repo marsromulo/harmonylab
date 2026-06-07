@@ -12,23 +12,37 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 import { apiRequest, type MobileNotification } from '@/lib/api';
 import { useAuth } from '@/providers/auth-provider';
 
 type NotificationContextValue = {
   notifications: MobileNotification[];
+  pushRegistrationError: string | null;
+  pushRegistrationStatus: PushRegistrationStatus;
   refreshNotifications: () => Promise<void>;
+  registerDevice: () => Promise<void>;
   markOrderRead: (orderId: string) => Promise<void>;
   unreadCount: number;
   unregisterDevice: () => Promise<void>;
 };
 
+export type PushRegistrationStatus =
+  | 'idle'
+  | 'permission-denied'
+  | 'registered'
+  | 'registering'
+  | 'unsupported'
+  | 'error';
+
 const NotificationContext = createContext<NotificationContextValue>({
   markOrderRead: async () => undefined,
   notifications: [],
+  pushRegistrationError: null,
+  pushRegistrationStatus: 'idle',
   refreshNotifications: async () => undefined,
+  registerDevice: async () => undefined,
   unreadCount: 0,
   unregisterDevice: async () => undefined,
 });
@@ -51,7 +65,7 @@ function getNotificationUrl(notification: Notifications.Notification) {
 
 async function getExpoPushToken() {
   if (Platform.OS === 'web' || !Device.isDevice) {
-    return null;
+    throw new Error('Push notifications require a physical phone.');
   }
 
   if (Platform.OS === 'android') {
@@ -70,7 +84,11 @@ async function getExpoPushToken() {
       : await Notifications.requestPermissionsAsync();
 
   if (finalPermissions.status !== 'granted') {
-    return null;
+    throw new Error(
+      finalPermissions.canAskAgain
+        ? 'Notification permission was not granted.'
+        : 'Notifications are disabled for HarmonyLab in Android Settings.',
+    );
   }
 
   const projectId =
@@ -80,7 +98,14 @@ async function getExpoPushToken() {
     throw new Error('Expo project ID is missing.');
   }
 
-  return (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  const devicePushToken = await Notifications.getDevicePushTokenAsync();
+
+  return (
+    await Notifications.getExpoPushTokenAsync({
+      devicePushToken,
+      projectId,
+    })
+  ).data;
 }
 
 export function NotificationProvider({ children }: PropsWithChildren) {
@@ -88,6 +113,9 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   const [notifications, setNotifications] = useState<MobileNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
+  const [pushRegistrationError, setPushRegistrationError] = useState<string | null>(null);
+  const [pushRegistrationStatus, setPushRegistrationStatus] =
+    useState<PushRegistrationStatus>('idle');
   const handledInitialNotification = useRef(false);
 
   const applyUnreadCount = useCallback(async (count: number) => {
@@ -149,12 +177,58 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       method: 'DELETE',
     }).catch(() => undefined);
     setExpoPushToken(null);
+    setPushRegistrationError(null);
+    setPushRegistrationStatus('idle');
     await applyUnreadCount(0);
   }, [applyUnreadCount, expoPushToken, session]);
+
+  const registerDevice = useCallback(async () => {
+    if (!session) {
+      return;
+    }
+
+    if (Platform.OS === 'web' || !Device.isDevice) {
+      setPushRegistrationStatus('unsupported');
+      setPushRegistrationError('Push notifications require the installed app on a physical phone.');
+      return;
+    }
+
+    setPushRegistrationStatus('registering');
+    setPushRegistrationError(null);
+
+    try {
+      const token = await getExpoPushToken();
+
+      await apiRequest('/api/mobile/push-token', session, {
+        body: JSON.stringify({
+          deviceName: Device.deviceName ?? Device.modelName ?? '',
+          expoPushToken: token,
+          platform: Platform.OS,
+        }),
+        method: 'POST',
+      });
+
+      setExpoPushToken(token);
+      setPushRegistrationStatus('registered');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to register this phone for notifications.';
+      const permissions = await Notifications.getPermissionsAsync().catch(() => null);
+
+      setPushRegistrationError(message);
+      setPushRegistrationStatus(
+        permissions && permissions.status !== 'granted' ? 'permission-denied' : 'error',
+      );
+      console.warn(message);
+    }
+  }, [session]);
 
   useEffect(() => {
     if (!session) {
       setNotifications([]);
+      setExpoPushToken(null);
+      setPushRegistrationError(null);
+      setPushRegistrationStatus('idle');
       void applyUnreadCount(0);
       return;
     }
@@ -164,28 +238,14 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     async function initializeNotifications() {
       try {
         await refreshNotifications();
-        const token = await getExpoPushToken();
-
-        if (!token || cancelled) {
-          return;
-        }
-
-        await apiRequest('/api/mobile/push-token', session!, {
-          body: JSON.stringify({
-            deviceName: Device.deviceName ?? Device.modelName ?? '',
-            expoPushToken: token,
-            platform: Platform.OS,
-          }),
-          method: 'POST',
-        });
-
-        if (!cancelled) {
-          setExpoPushToken(token);
-        }
       } catch (error) {
         console.warn(
-          error instanceof Error ? error.message : 'Unable to initialize push notifications.',
+          error instanceof Error ? error.message : 'Unable to load notifications.',
         );
+      }
+
+      if (!cancelled) {
+        await registerDevice();
       }
     }
 
@@ -194,7 +254,25 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [applyUnreadCount, refreshNotifications, session]);
+  }, [applyUnreadCount, refreshNotifications, registerDevice, session]);
+
+  useEffect(() => {
+    if (!session || Platform.OS === 'web') {
+      return;
+    }
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (
+        state === 'active' &&
+        pushRegistrationStatus !== 'registered' &&
+        pushRegistrationStatus !== 'registering'
+      ) {
+        void registerDevice();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [pushRegistrationStatus, registerDevice, session]);
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -238,11 +316,23 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     () => ({
       markOrderRead,
       notifications,
+      pushRegistrationError,
+      pushRegistrationStatus,
       refreshNotifications,
+      registerDevice,
       unreadCount,
       unregisterDevice,
     }),
-    [markOrderRead, notifications, refreshNotifications, unreadCount, unregisterDevice],
+    [
+      markOrderRead,
+      notifications,
+      pushRegistrationError,
+      pushRegistrationStatus,
+      refreshNotifications,
+      registerDevice,
+      unreadCount,
+      unregisterDevice,
+    ],
   );
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
