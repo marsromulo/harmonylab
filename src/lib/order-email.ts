@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import sgMail from "@sendgrid/mail";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 type OrderEmailRecipient = "admin" | "customer";
@@ -42,37 +42,26 @@ type EmailMessage = {
   text: string;
 };
 
-let transporter: nodemailer.Transporter | null = null;
+function getSendGridConfiguration() {
+  const apiKey = process.env.SENDGRID_API_KEY?.trim();
+  const fromEmail = process.env.SENDGRID_FROM_EMAIL?.trim();
 
-function getTransporter() {
-  if (transporter) {
-    return transporter;
+  if (!apiKey || !fromEmail) {
+    throw new Error("Missing SENDGRID_API_KEY or SENDGRID_FROM_EMAIL.");
   }
 
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT ?? "587");
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  sgMail.setApiKey(apiKey);
 
-  if (!host || !Number.isInteger(port) || port <= 0 || !user || !pass) {
-    throw new Error("Missing or invalid SMTP_HOST, SMTP_PORT, SMTP_USER, or SMTP_PASS.");
-  }
-
-  transporter = nodemailer.createTransport({
-    auth: {
-      pass,
-      user,
+  return {
+    from: {
+      email: fromEmail,
+      name: "Harmony Lab",
     },
-    host,
-    port,
-    requireTLS: port === 587,
-    secure: port === 465,
-    tls: {
-      minVersion: "TLSv1.2",
+    replyTo: {
+      email: "harmonylabhk@gmail.com",
+      name: "Harmony Lab",
     },
-  });
-
-  return transporter;
+  };
 }
 
 function escapeHtml(value: string) {
@@ -344,15 +333,12 @@ async function sendClaimedEmail({
   }
 
   try {
-    const from = process.env.EMAIL_FROM;
+    const { from, replyTo } = getSendGridConfiguration();
 
-    if (!from) {
-      throw new Error("Missing EMAIL_FROM.");
-    }
-
-    await getTransporter().sendMail({
+    await sgMail.send({
       from,
       html: message.html,
+      replyTo,
       subject: message.subject,
       text: message.text,
       to,
