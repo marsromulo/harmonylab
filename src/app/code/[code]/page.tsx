@@ -13,7 +13,7 @@ export default async function ReferralCodePage({ params }: ReferralCodePageProps
 
   return (
     <div className="page">
-      <SiteHeader active="products" />
+      <SiteHeader active="products" showReferralGate={false} />
       <main className="checkout-page">
         <ReferralCodeCapture code={code} />
       </main>

@@ -149,6 +149,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                 <h3>{profile?.fullName ?? user.email}</h3>
                 <p>{profile?.email ?? user.email}</p>
                 {profile?.phone ? <p>{profile.phone}</p> : null}
+                {profile?.referralCode ? <span>Referred by: {profile.referralCode}</span> : null}
                 {profile?.referralId ? <span>Referral ID: {profile.referralId}</span> : null}
               </div>
               <div className="account-actions">

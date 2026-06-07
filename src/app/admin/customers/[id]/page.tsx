@@ -94,18 +94,22 @@ export default async function AdminCustomerDetailPage({ params, searchParams }: 
               <dt>Referral points</dt>
               <dd>{customer.referralPointsBalance}</dd>
             </div>
+            <div>
+              <dt>Referred by member code</dt>
+              <dd>{customer.referralCode ?? "None"}</dd>
+            </div>
           </dl>
         </div>
 
         <div className="admin-panel admin-detail-panel">
-          <h2>Referral Code</h2>
+          <h2>Customer Referral ID</h2>
           <form action={updateCustomerReferralAction.bind(null, customer.id)} className="admin-detail-form">
             <label>
-              Referral code
+              Customer referral ID
               <input name="referral_id" placeholder="Blank" defaultValue={customer.referralId ?? ""} />
             </label>
             <button className="admin-btn" type="submit">
-              Save Referral Code
+              Save Referral ID
             </button>
           </form>
         </div>

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { setOrderCheckoutSession } from "@/lib/checkout";
 import { ensureCustomerProfile } from "@/lib/customers";
+import { getValidatedWebsiteReferralCode } from "@/lib/referrals";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
 import { getSiteUrl, getStripe, getStripeShippingDetails } from "@/lib/stripe";
 
@@ -145,7 +146,14 @@ export async function registerCustomerAction(formData: FormData) {
 
   if (user ?? data.user) {
     try {
-      await ensureCustomerProfile(user ?? data.user!, { firstName, fullName, lastName, phone });
+      const referralCode = await getValidatedWebsiteReferralCode();
+      await ensureCustomerProfile(user ?? data.user!, {
+        firstName,
+        fullName,
+        lastName,
+        phone,
+        ...(referralCode ? { referralCode } : {}),
+      });
     } catch (profileError) {
       console.warn(profileError instanceof Error ? profileError.message : "Unable to create customer profile.");
     }
@@ -179,7 +187,8 @@ export async function loginCustomerAction(formData: FormData) {
 
   if (user) {
     try {
-      await ensureCustomerProfile(user);
+      const referralCode = await getValidatedWebsiteReferralCode();
+      await ensureCustomerProfile(user, referralCode ? { referralCode } : undefined);
     } catch (profileError) {
       console.warn(profileError instanceof Error ? profileError.message : "Unable to create customer profile.");
     }

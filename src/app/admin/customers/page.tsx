@@ -63,7 +63,8 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
                 <th>Orders</th>
                 <th>Total Spent</th>
                 <th>Points</th>
-                <th>Referral Code</th>
+                <th>Referred By</th>
+                <th>Customer Referral ID</th>
               </tr>
             </thead>
             <tbody>
@@ -84,6 +85,13 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
                   <td>{customer.orderCount}</td>
                   <td>{formatOrderMoney(customer.totalSpentCents)}</td>
                   <td>{customer.referralPointsBalance}</td>
+                  <td>
+                    {customer.referralCode ? (
+                      <span className="admin-referral">{customer.referralCode}</span>
+                    ) : (
+                      <span className="admin-empty-text">None</span>
+                    )}
+                  </td>
                   <td>
                     {customer.referralId ? (
                       <span className="admin-referral">{customer.referralId}</span>

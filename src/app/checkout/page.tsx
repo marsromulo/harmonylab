@@ -12,6 +12,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { getCartSummary } from "@/lib/cart";
 import { getCurrentCustomer, getCustomerAddresses } from "@/lib/customers";
 import { formatProductPrice } from "@/lib/products";
+import { getValidatedWebsiteReferralCode } from "@/lib/referrals";
 import { calculateShippingCents } from "@/lib/shipping";
 
 type CheckoutPageProps = {
@@ -29,6 +30,7 @@ const errorMessages: Record<string, string> = {
   "register-password-mismatch": "Please make sure both password fields match.",
   "payment-cancelled": "Payment was cancelled. You can review your checkout and try again.",
   "payment-unavailable": "That payment method is not available yet. Please choose Credit Card.",
+  "referral-invalid": "That referral code was not found. Contact your referrer for the correct code or leave it blank.",
   "shipping-invalid": "Please enter your name, address, and city for delivery.",
 };
 
@@ -39,7 +41,12 @@ const successMessages: Record<string, string> = {
 
 export default async function CheckoutPage({ searchParams }: CheckoutPageProps) {
   await connection();
-  const [{ error, success }, cart, { profile, user }] = await Promise.all([searchParams, getCartSummary(), getCurrentCustomer()]);
+  const [{ error, success }, cart, { profile, user }, cookieReferralCode] = await Promise.all([
+    searchParams,
+    getCartSummary(),
+    getCurrentCustomer(),
+    getValidatedWebsiteReferralCode(),
+  ]);
   const addresses = profile ? await getCustomerAddresses(profile.id) : [];
   const currency = cart.lines[0]?.product.currency ?? "HKD";
   const shippingCents = cart.lines.length > 0
@@ -171,7 +178,10 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
                 </Link>
               </aside>
               <CheckoutPaymentMethod formId="checkout-order-form" />
-              <ReferralCodeField formId="checkout-order-form" />
+              <ReferralCodeField
+                formId="checkout-order-form"
+                savedCode={profile?.referralCode || cookieReferralCode}
+              />
               <CheckoutPlaceOrderButton />
             </div>
           </form>

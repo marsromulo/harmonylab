@@ -7,6 +7,7 @@ export type AdminCustomer = {
   fullName: string | null;
   lastName: string | null;
   phone: string | null;
+  referralCode: string | null;
   referralId: string | null;
   referralPointsBalance: number;
   createdAt: string;
@@ -45,6 +46,7 @@ type CustomerRow = {
   full_name: string | null;
   last_name: string | null;
   phone: string | null;
+  referral_code: string | null;
   referral_id: string | null;
   referral_points_balance: number;
   created_at: string;
@@ -82,6 +84,7 @@ const adminCustomerSelect = [
   "full_name",
   "last_name",
   "phone",
+  "referral_code",
   "referral_id",
   "referral_points_balance",
   "created_at",
@@ -99,6 +102,7 @@ function mapCustomer(customer: CustomerRow, totals = { count: 0, totalCents: 0 }
     fullName: getFullName(customer.first_name, customer.last_name, customer.full_name),
     lastName: customer.last_name,
     phone: customer.phone,
+    referralCode: customer.referral_code,
     referralId: customer.referral_id,
     referralPointsBalance: customer.referral_points_balance,
     createdAt: customer.created_at,

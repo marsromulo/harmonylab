@@ -4,16 +4,13 @@ import { redirect } from "next/navigation";
 import { getCartSummary } from "@/lib/cart";
 import { createCheckoutOrder, setOrderCheckoutSession } from "@/lib/checkout";
 import { ensureCustomerProfile, upsertDefaultCustomerAddress } from "@/lib/customers";
+import { validateMemberReferralCode } from "@/lib/referrals";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
 import { getSiteUrl, getStripe, getStripeShippingDetails } from "@/lib/stripe";
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
-}
-
-function normalizeReferralCode(value: string) {
-  return value.replace(/[^\w-]/g, "").toUpperCase().slice(0, 40);
 }
 
 function getPaymentMethod(value: string) {
@@ -56,7 +53,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
   const deliveryNotes = getString(formData, "delivery_notes");
   const customerAddressId = getString(formData, "customer_address_id");
   const paymentMethod = getPaymentMethod(getString(formData, "payment_method"));
-  const referralCode = normalizeReferralCode(getString(formData, "referral_code"));
+  const enteredReferralCode = getString(formData, "referral_code");
 
   if (!firstName || !lastName || !shippingAddressLine1 || !shippingCity) {
     redirect("/checkout?error=shipping-invalid");
@@ -66,7 +63,25 @@ export async function createCheckoutOrderAction(formData: FormData) {
     redirect("/checkout?error=payment-unavailable");
   }
 
-  const customer = await ensureCustomerProfile(user, { firstName, fullName, lastName, phone });
+  let referralCode = "";
+
+  if (enteredReferralCode) {
+    const referralResult = await validateMemberReferralCode(enteredReferralCode);
+
+    if (!referralResult.valid) {
+      redirect("/checkout?error=referral-invalid");
+    }
+
+    referralCode = referralResult.referralCode;
+  }
+
+  const customer = await ensureCustomerProfile(user, {
+    firstName,
+    fullName,
+    lastName,
+    phone,
+    ...(referralCode ? { referralCode } : {}),
+  });
   const addressPayload = {
     firstName,
     lastName,

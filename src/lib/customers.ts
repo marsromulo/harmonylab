@@ -9,6 +9,7 @@ export type CustomerProfile = {
   fullName: string | null;
   lastName: string | null;
   phone: string | null;
+  referralCode: string | null;
   referralId: string | null;
   referralPointsBalance: number;
 };
@@ -37,6 +38,7 @@ type CustomerProfileRow = {
   full_name: string | null;
   last_name: string | null;
   phone: string | null;
+  referral_code: string | null;
   referral_id: string | null;
   referral_points_balance: number;
 };
@@ -57,7 +59,8 @@ type CustomerAddressRow = {
   is_default: boolean;
 };
 
-const customerProfileSelect = "id,auth_user_id,email,first_name,last_name,full_name,phone,referral_id,referral_points_balance";
+const customerProfileSelect =
+  "id,auth_user_id,email,first_name,last_name,full_name,phone,referral_code,referral_id,referral_points_balance";
 const customerAddressSelect =
   "id,customer_id,label,first_name,last_name,phone,address_line1,address_line2,city,region,postal_code,country,is_default";
 
@@ -74,6 +77,7 @@ function mapCustomerProfile(row: CustomerProfileRow): CustomerProfile {
     fullName: getFullName(row.first_name, row.last_name, row.full_name),
     lastName: row.last_name,
     phone: row.phone,
+    referralCode: row.referral_code,
     referralId: row.referral_id,
     referralPointsBalance: row.referral_points_balance,
   };
@@ -126,7 +130,13 @@ export async function getCurrentCustomer() {
 
 export async function ensureCustomerProfile(
   user: User,
-  values?: { firstName?: string; fullName?: string; lastName?: string; phone?: string },
+  values?: {
+    firstName?: string;
+    fullName?: string;
+    lastName?: string;
+    phone?: string;
+    referralCode?: string | null;
+  },
 ) {
   const supabase = createSupabaseServiceRoleClient();
   const email = user.email ?? null;
@@ -136,6 +146,7 @@ export async function ensureCustomerProfile(
     values?.fullName ??
     getFullName(firstName, lastName, typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : null);
   const phone = values?.phone ?? null;
+  const hasReferralCode = Object.prototype.hasOwnProperty.call(values ?? {}, "referralCode");
 
   const { data: existingProfile, error: existingError } = await supabase
     .from("customer_profiles")
@@ -156,6 +167,7 @@ export async function ensureCustomerProfile(
         full_name: fullName ?? (existingProfile as CustomerProfileRow).full_name,
         last_name: lastName ?? (existingProfile as CustomerProfileRow).last_name,
         phone: phone ?? (existingProfile as CustomerProfileRow).phone,
+        ...(hasReferralCode ? { referral_code: values?.referralCode ?? null } : {}),
       })
       .eq("auth_user_id", user.id)
       .select(customerProfileSelect)
@@ -177,6 +189,7 @@ export async function ensureCustomerProfile(
       full_name: fullName,
       last_name: lastName,
       phone,
+      referral_code: values?.referralCode ?? null,
     })
     .select(customerProfileSelect)
     .single();
