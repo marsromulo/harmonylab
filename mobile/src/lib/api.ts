@@ -2,6 +2,44 @@ import type { Session } from '@supabase/supabase-js';
 
 const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '');
 
+async function parseResponse<T>(response: Response): Promise<T> {
+  const responseText = await response.text();
+  let data: (T & { error?: string }) | null = null;
+
+  try {
+    data = JSON.parse(responseText) as T & { error?: string };
+  } catch {
+    throw new Error(
+      response.ok
+        ? 'The server returned an invalid response.'
+        : `The server could not complete the request (${response.status}).`,
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(data.error || 'The request could not be completed.');
+  }
+
+  return data;
+}
+
+export async function validateReferralCode(referralCode: string) {
+  if (!configuredApiUrl) {
+    throw new Error('EXPO_PUBLIC_API_URL is not configured.');
+  }
+
+  const response = await fetch(`${configuredApiUrl}/api/mobile/referral/validate`, {
+    body: JSON.stringify({ referralCode }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  });
+  const data = await parseResponse<{ valid: boolean }>(response);
+
+  return data.valid;
+}
+
 export type MobileAddress = {
   address_line1: string;
   address_line2: string | null;
@@ -60,12 +98,5 @@ export async function apiRequest<T>(
       ...init?.headers,
     },
   });
-  const data = (await response.json()) as T & { error?: string };
-
-  if (!response.ok) {
-    throw new Error(data.error || 'The request could not be completed.');
-  }
-
-  return data;
+  return parseResponse<T>(response);
 }
-

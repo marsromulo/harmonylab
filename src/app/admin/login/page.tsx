@@ -30,8 +30,8 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
         <Image
           src="/hl-logo.png"
           alt="Harmony Lab"
-          width={1089}
-          height={287}
+          width={1154}
+          height={271}
           priority
           unoptimized
         />

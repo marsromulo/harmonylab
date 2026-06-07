@@ -2,7 +2,7 @@
   "expo": {
     "name": "HarmonyLab",
     "slug": "harmonylab",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/harmonylab-app-icon.png",
     "scheme": "harmonylab",
@@ -20,7 +20,7 @@
       },
       "package": "com.harmonylab.mobile",
       "predictiveBackGestureEnabled": false,
-      "versionCode": 2
+      "versionCode": 4
     },
     "web": {
       "output": "static",

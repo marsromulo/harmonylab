@@ -17,6 +17,7 @@ import { Brand } from '@/constants/brand';
 import { apiRequest, type MobileAccount } from '@/lib/api';
 import { useAuth } from '@/providers/auth-provider';
 import { useCart } from '@/providers/cart-provider';
+import { useReferral } from '@/providers/referral-provider';
 
 type PaymentStatusResponse = {
   orderNumber: string;
@@ -28,9 +29,10 @@ type PaymentStatusResponse = {
 export default function CheckoutScreen() {
   const { session } = useAuth();
   const { clearCart, items } = useCart();
+  const { referralCode: savedReferralCode } = useReferral();
   const [account, setAccount] = useState<MobileAccount | null>(null);
   const [addressId, setAddressId] = useState('');
-  const [referralCode, setReferralCode] = useState('');
+  const [referralCode, setReferralCode] = useState(savedReferralCode);
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -332,4 +334,3 @@ const styles = StyleSheet.create({
   },
   title: { color: Brand.darkGreen, fontSize: 30, fontWeight: '800', lineHeight: 36 },
 });
-

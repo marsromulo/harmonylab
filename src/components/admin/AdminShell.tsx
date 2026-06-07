@@ -32,8 +32,8 @@ export async function AdminShell({ active, children }: AdminShellProps) {
           src="/hl-logo.png"
           className="admin-logo"
           alt="Harmony Lab"
-          width={1089}
-          height={287}
+          width={1154}
+          height={271}
           priority
           unoptimized
         />

@@ -8,7 +8,7 @@ export function BrandHeader() {
     <View style={styles.header}>
       <Image
         contentFit="contain"
-        source={require('@/assets/images/harmonylab/logo-final.png')}
+        source={require('@/assets/images/harmonylab/full-logo-new.png')}
         style={styles.logo}
       />
     </View>
@@ -25,7 +25,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   logo: {
-    height: 38,
+    height: 48,
     width: 205,
   },
 });
