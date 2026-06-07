@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { markCheckoutOrderPaid } from "@/lib/checkout";
+import { sendPaidOrderEmails } from "@/lib/order-email";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe";
 
@@ -30,8 +31,12 @@ export async function POST(request: Request) {
     if (session.payment_status === "paid") {
       try {
         await markCheckoutOrderPaid(session);
+        await sendPaidOrderEmails(session.id);
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unable to mark Stripe order paid.";
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Unable to complete paid Stripe order processing.";
         console.error(message);
         return Response.json({ error: message }, { status: 500 });
       }

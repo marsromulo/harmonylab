@@ -105,7 +105,7 @@ export async function markCheckoutOrderPaid(session: Stripe.Checkout.Session) {
       ? session.payment_intent
       : session.payment_intent?.id ?? null;
   const supabase = createSupabaseServiceRoleClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("orders")
     .update({
       paid_at: new Date().toISOString(),
@@ -113,10 +113,14 @@ export async function markCheckoutOrderPaid(session: Stripe.Checkout.Session) {
       status: "paid",
       stripe_payment_intent_id: paymentIntentId,
     })
-    .eq("stripe_checkout_session_id", session.id);
+    .eq("stripe_checkout_session_id", session.id)
+    .select("id")
+    .maybeSingle();
 
-  if (error) {
-    throw new Error(`Unable to mark Stripe order paid: ${error.message}`);
+  if (error || !data) {
+    throw new Error(
+      `Unable to mark Stripe order paid: ${error?.message ?? "Order not found."}`,
+    );
   }
 
   return true;
