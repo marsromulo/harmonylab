@@ -2,62 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
+import { getFeaturedProducts, getProductDescriptionPreview } from "@/lib/products";
 
-const products = [
-  {
-    alt: "Vitamin C Travel Kit",
-    image: "/layout3/product-serum-kit.jpg",
-    kicker: "Vitamin C Travel Kit",
-    title: (
-      <>
-        Vitamin C
-        <br />
-        Travel Kit
-      </>
-    ),
-    text: "Brighten, hydrate, and protect your skin with the power of Vitamin C.",
-  },
-  {
-    alt: "Radiance and Night Cream Set",
-    image: "/layout3/product-cream-set.jpg",
-    kicker: (
-      <>
-        Radiance &amp; Night
-        <br />
-        Cream Set
-      </>
-    ),
-    title: (
-      <>
-        Radiance &amp;
-        <br />
-        Night Cream Set
-      </>
-    ),
-    text: "Day and night care to hydrate, repair, and reveal radiant skin.",
-  },
-  {
-    alt: "Advanced Serum Trio",
-    image: "/layout3/product-travel-kit.jpg",
-    kicker: (
-      <>
-        Advanced
-        <br />
-        Serum Trio
-      </>
-    ),
-    title: (
-      <>
-        Advanced
-        <br />
-        Serum Trio
-      </>
-    ),
-    text: "Target acne, brighten, and reduce wrinkles with advanced serums.",
-  },
-];
-
-export default function Home() {
+export default async function Home() {
+  const products = await getFeaturedProducts(3);
   return (
     <div className="page layout3-page">
       <SiteHeader active="home" />
@@ -132,12 +80,16 @@ export default function Home() {
 
         <section className="layout3-products" aria-label="Featured products">
           {products.map((product) => (
-            <article className="layout3-product-card" key={product.alt}>
-              <Image src={product.image} alt={product.alt} width={500} height={360} />
+            <article className="layout3-product-card" key={product.id}>
+              <Link href={`/products/${product.slug}`} aria-label={`View ${product.name}`} className="layout3-product-card-link">
+                <Image src={product.imageUrl} alt={product.name} width={500} height={360} />
+              </Link>
               <div className="layout3-product-info">
-                <p className="layout3-eyebrow">{product.kicker}</p>
-                <h2>{product.title}</h2>
-                <p>{product.text}</p>
+                <p className="layout3-eyebrow">{product.name}</p>
+                <h2>
+                  <Link href={`/products/${product.slug}`}>{product.name}</Link>
+                </h2>
+                <p>{getProductDescriptionPreview(product.description)}</p>
               </div>
             </article>
           ))}
