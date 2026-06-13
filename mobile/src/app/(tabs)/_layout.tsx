@@ -1,10 +1,44 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
+import { useCallback, useRef } from 'react';
+import { Animated, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Brand } from '@/constants/brand';
 import { useCart } from '@/providers/cart-provider';
 import { useNotifications } from '@/providers/notification-provider';
+
+function CartTabIcon({
+  color,
+  focused,
+}: {
+  color: string;
+  focused: boolean;
+}) {
+  const { cartIconScale, registerCartTarget } = useCart();
+  const iconRef = useRef<View>(null);
+
+  const measureCartIcon = useCallback(() => {
+    requestAnimationFrame(() => {
+      iconRef.current?.measureInWindow((x, y, width, height) => {
+        registerCartTarget({
+          x: x + width / 2,
+          y: y + height / 2,
+        });
+      });
+    });
+  }, [registerCartTarget]);
+
+  return (
+    <Animated.View
+      collapsable={false}
+      onLayout={measureCartIcon}
+      ref={iconRef}
+      style={{ transform: [{ scale: cartIconScale }] }}>
+      <Ionicons color={color} name={focused ? 'cart' : 'cart-outline'} size={18} />
+    </Animated.View>
+  );
+}
 
 export default function TabLayout() {
   const { itemCount } = useCart();
@@ -65,7 +99,7 @@ export default function TabLayout() {
           },
           tabBarAccessibilityLabel: `Cart${itemCount > 0 ? `, ${itemCount} items` : ''}`,
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons color={color} name={focused ? 'cart' : 'cart-outline'} size={18} />
+            <CartTabIcon color={color} focused={focused} />
           ),
           title: 'Cart',
         }}

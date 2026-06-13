@@ -13,7 +13,7 @@ import {
 import { useCart } from '@/providers/cart-provider';
 
 export default function ProductDetailScreen() {
-  const { addItem } = useCart();
+  const { addItem, animateAddToCart } = useCart();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const [product, setProduct] = useState<MobileProduct | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,7 +74,13 @@ export default function ProductDetailScreen() {
       </View>
       <Pressable
         disabled={product.inventoryQuantity < 1}
-        onPress={() => addItem(product.id)}
+        onPress={(event) => {
+          addItem(product.id);
+          animateAddToCart({
+            x: event.nativeEvent.pageX,
+            y: event.nativeEvent.pageY,
+          });
+        }}
         style={styles.button}>
         <Text style={styles.buttonText}>
           {product.inventoryQuantity > 0 ? 'ADD TO CART' : 'SOLD OUT'}

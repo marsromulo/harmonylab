@@ -11,7 +11,7 @@ import {
 import { useCart } from '@/providers/cart-provider';
 
 export function ProductCard({ product }: { product: MobileProduct }) {
-  const { addItem } = useCart();
+  const { addItem, animateAddToCart } = useCart();
 
   return (
     <View style={styles.card}>
@@ -41,7 +41,13 @@ export function ProductCard({ product }: { product: MobileProduct }) {
       </Pressable>
       <Pressable
         disabled={product.inventoryQuantity < 1}
-        onPress={() => addItem(product.id)}
+        onPress={(event) => {
+          addItem(product.id);
+          animateAddToCart({
+            x: event.nativeEvent.pageX,
+            y: event.nativeEvent.pageY,
+          });
+        }}
         style={styles.addButton}>
         <Text style={styles.addButtonText}>
           {product.inventoryQuantity > 0 ? 'ADD TO CART' : 'SOLD OUT'}
