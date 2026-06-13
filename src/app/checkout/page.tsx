@@ -93,6 +93,18 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
           </section>
         ) : !user && !isGuestCheckout ? (
           <section className="checkout-auth-stack">
+            <div className="account-panel account-form checkout-auth-form">
+              <p className="eyebrow">GUEST CHECKOUT</p>
+              <h3>Continue without an account</h3>
+              <p>
+                Enter your contact and delivery information at checkout. We will remember it on this
+                device for your next purchase.
+              </p>
+              <Link className="account-guest-button" href="/checkout?guest=1">
+                CONTINUE AS GUEST
+              </Link>
+            </div>
+
             <form action={loginCustomerAction} className="account-panel account-form checkout-auth-form">
               <p className="eyebrow">RETURNING CUSTOMER</p>
               <h3>Sign in</h3>
@@ -146,17 +158,6 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
               <button type="submit">REGISTER</button>
             </form>
 
-            <div className="account-panel account-form checkout-auth-form">
-              <p className="eyebrow">GUEST CHECKOUT</p>
-              <h3>Continue without an account</h3>
-              <p>
-                Enter your contact and delivery information at checkout. We will remember it on this
-                device for your next purchase.
-              </p>
-              <Link className="account-guest-button" href="/checkout?guest=1">
-                CONTINUE AS GUEST
-              </Link>
-            </div>
           </section>
         ) : (
           <form action={createCheckoutOrderAction} className="checkout-layout" id="checkout-order-form">

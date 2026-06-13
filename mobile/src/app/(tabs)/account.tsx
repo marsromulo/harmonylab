@@ -59,6 +59,7 @@ export default function AccountScreen() {
   } = useNotifications();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [phone, setPhone] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -123,6 +124,14 @@ export default function AccountScreen() {
           mode === 'register'
             ? 'Enter your first name, last name, email, and a password with at least 6 characters.'
             : 'Enter your email and password.',
+        type: 'error',
+      });
+      return;
+    }
+
+    if (mode === 'register' && password !== passwordConfirmation) {
+      setMessage({
+        text: 'Make sure both password fields match.',
         type: 'error',
       });
       return;
@@ -396,15 +405,26 @@ export default function AccountScreen() {
                       router.push({ pathname: '/order/[id]', params: { id: order.id } })
                     }
                     style={styles.card}>
-                    <View style={styles.sectionHeading}>
-                      <Text style={styles.cardTitle}>{order.order_number}</Text>
-                      <Text style={styles.orderStatus}>{order.status.toUpperCase()}</Text>
-                    </View>
-                    <Text style={styles.cardText}>
-                      {new Date(order.created_at).toLocaleDateString()} · {formatOrderTotal(order)}
-                      {'\n'}
-                      {order.order_items.map((item) => `${item.quantity}× ${item.product_name}`).join(', ')}
-                    </Text>
+                    {({ pressed }) => (
+                      <>
+                        <View style={styles.sectionHeading}>
+                          <Text
+                            style={[
+                              styles.cardTitle,
+                              styles.orderLink,
+                              pressed && styles.orderLinkPressed,
+                            ]}>
+                            {order.order_number}
+                          </Text>
+                          <Text style={styles.orderStatus}>{order.status.toUpperCase()}</Text>
+                        </View>
+                        <Text style={styles.cardText}>
+                          {new Date(order.created_at).toLocaleDateString()} · {formatOrderTotal(order)}
+                          {'\n'}
+                          {order.order_items.map((item) => `${item.quantity}× ${item.product_name}`).join(', ')}
+                        </Text>
+                      </>
+                    )}
                   </Pressable>
                 ))
               ) : (
@@ -505,6 +525,21 @@ export default function AccountScreen() {
             style={styles.input}
             value={password}
           />
+          {mode === 'register' ? (
+            <TextInput
+              autoCapitalize="none"
+              autoComplete="new-password"
+              onChangeText={(value) => {
+                setPasswordConfirmation(value);
+                setMessage(null);
+              }}
+              placeholder="Confirm password"
+              placeholderTextColor="#929a94"
+              secureTextEntry
+              style={styles.input}
+              value={passwordConfirmation}
+            />
+          ) : null}
           <Pressable disabled={submitting} onPress={() => void submitAuth()} style={styles.button}>
             {submitting ? (
               <ActivityIndicator color={Brand.white} />
@@ -515,6 +550,7 @@ export default function AccountScreen() {
           <Pressable
             onPress={() => {
               setMessage(null);
+              setPasswordConfirmation('');
               setMode((current) => (current === 'login' ? 'register' : 'login'));
             }}>
             <Text style={styles.switchText}>
@@ -625,6 +661,8 @@ const styles = StyleSheet.create({
   notificationStatusAttention: { color: '#9d4335' },
   notificationStatusEnabled: { color: Brand.darkGreen },
   orderStatus: { color: Brand.orange, fontSize: 10, fontWeight: '800' },
+  orderLink: { textDecorationLine: 'underline' },
+  orderLinkPressed: { color: Brand.orange },
   outlineButton: {
     alignItems: 'center',
     borderColor: Brand.darkGreen,

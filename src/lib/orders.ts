@@ -1,6 +1,7 @@
 import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
 
 export type OrderStatus = "pending" | "paid" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded";
+export type ReferralPayoutStatus = "paid" | "unpaid";
 
 export type StoreOrder = {
   id: string;
@@ -28,6 +29,7 @@ export type StoreOrder = {
   referralCodeEntered: string | null;
   referralOwnerCustomerId: string | null;
   referralOwnerMemberId: string | null;
+  referralPayoutStatus: ReferralPayoutStatus;
   referralPointsAwarded: number;
   deliveryNotes: string | null;
   shippingAddressLine1: string | null;
@@ -82,6 +84,7 @@ type StoreOrderRow = {
   referral_code_entered: string | null;
   referral_owner_customer_id: string | null;
   referral_owner_member_id: string | null;
+  referral_payout_status: ReferralPayoutStatus;
   referral_points_awarded: number;
   delivery_notes: string | null;
   shipping_address_line1: string | null;
@@ -152,6 +155,7 @@ const baseOrderColumns = [
   "referral_code_entered",
   "referral_owner_customer_id",
   "referral_owner_member_id",
+  "referral_payout_status",
   "referral_points_awarded",
   "delivery_notes",
   "shipping_address_line1",
@@ -213,6 +217,7 @@ function mapOrder(row: StoreOrderRow): StoreOrder {
     referralCodeEntered: row.referral_code_entered,
     referralOwnerCustomerId: row.referral_owner_customer_id,
     referralOwnerMemberId: row.referral_owner_member_id,
+    referralPayoutStatus: row.referral_payout_status,
     referralPointsAwarded: row.referral_points_awarded,
     deliveryNotes: row.delivery_notes,
     shippingAddressLine1: row.shipping_address_line1,
@@ -367,6 +372,50 @@ export async function getCustomerOrders(customerId: string, limit = 20) {
   }
 
   return (data as unknown as StoreOrderRow[]).map(mapOrder);
+}
+
+export async function getCustomerOrderDetails(customerId: string, orderId: string) {
+  const supabase = await createSupabaseAuthServerClient();
+  let { data: order, error: orderError } = await supabase
+    .from("orders")
+    .select(orderSelect)
+    .eq("id", orderId)
+    .eq("customer_id", customerId)
+    .maybeSingle();
+
+  if (orderError && isMissingFulfillmentColumnError(orderError.message)) {
+    const fallback = await supabase
+      .from("orders")
+      .select(baseOrderSelect)
+      .eq("id", orderId)
+      .eq("customer_id", customerId)
+      .maybeSingle();
+    order = fallback.data;
+    orderError = fallback.error;
+  }
+
+  if (orderError) {
+    throw new Error(`Unable to load customer order: ${orderError.message}`);
+  }
+
+  if (!order) {
+    return null;
+  }
+
+  const { data: items, error: itemError } = await supabase
+    .from("order_items")
+    .select("id,order_id,product_id,product_name,quantity,unit_price_cents,line_total_cents")
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: true });
+
+  if (itemError) {
+    throw new Error(`Unable to load customer order items: ${itemError.message}`);
+  }
+
+  return {
+    items: ((items ?? []) as unknown as StoreOrderItemRow[]).map(mapOrderItem),
+    order: mapOrder(order as unknown as StoreOrderRow),
+  };
 }
 
 export async function getAdminOrderDetails(orderId: string) {

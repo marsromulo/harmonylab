@@ -244,7 +244,9 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                   {orders.map((order) => (
                     <article className="account-order-card" key={order.id}>
                       <div>
-                        <b>{order.orderNumber}</b>
+                        <Link className="account-order-link" href={`/account/orders/${order.id}`}>
+                          {order.orderNumber}
+                        </Link>
                         <span>{formatOrderDate(order.createdAt)}</span>
                       </div>
                       <div className="account-order-summary">

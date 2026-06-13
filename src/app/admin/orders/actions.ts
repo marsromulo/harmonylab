@@ -15,6 +15,10 @@ function getFulfillmentStatus(value: string): OrderStatus {
   return value === "delivered" ? "delivered" : "shipped";
 }
 
+function getReferralPayoutStatus(value: string) {
+  return value === "paid" ? "paid" : "unpaid";
+}
+
 function getTrackingUrl(value: string) {
   if (!value) {
     return null;
@@ -76,4 +80,23 @@ export async function updateOrderFulfillmentAction(orderId: string, formData: Fo
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${orderId}`);
   redirect(`/admin/orders/${orderId}?success=fulfillment-updated`);
+}
+
+export async function updateReferralPayoutStatusAction(orderId: string, formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const referralPayoutStatus = getReferralPayoutStatus(
+    getString(formData, "referral_payout_status"),
+  );
+  const { error } = await supabase
+    .from("orders")
+    .update({ referral_payout_status: referralPayoutStatus })
+    .eq("id", orderId);
+
+  if (error) {
+    redirect(`/admin/orders/${orderId}?error=referral-status-update-failed`);
+  }
+
+  revalidatePath("/admin/orders");
+  revalidatePath(`/admin/orders/${orderId}`);
+  redirect(`/admin/orders/${orderId}?success=referral-status-updated`);
 }

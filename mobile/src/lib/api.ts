@@ -40,6 +40,21 @@ export async function validateReferralCode(referralCode: string) {
   return data.valid;
 }
 
+export async function publicApiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  if (!configuredApiUrl) {
+    throw new Error('EXPO_PUBLIC_API_URL is not configured.');
+  }
+
+  const response = await fetch(`${configuredApiUrl}${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...init?.headers,
+    },
+  });
+  return parseResponse<T>(response);
+}
+
 export type MobileAddress = {
   address_line1: string;
   address_line2: string | null;

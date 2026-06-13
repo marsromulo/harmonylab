@@ -11,7 +11,10 @@ import {
   getPaymentMethodLabel,
   getPaymentProviderLabel,
 } from "@/lib/orders";
-import { updateOrderFulfillmentAction } from "../actions";
+import {
+  updateOrderFulfillmentAction,
+  updateReferralPayoutStatusAction,
+} from "../actions";
 
 export const metadata: Metadata = {
   title: "Order Details | Harmony Lab Admin",
@@ -30,10 +33,12 @@ type AdminOrderDetailPageProps = {
 
 const errorMessages: Record<string, string> = {
   "fulfillment-update-failed": "Unable to update fulfillment details.",
+  "referral-status-update-failed": "Unable to update the referral payout status.",
 };
 
 const successMessages: Record<string, string> = {
   "fulfillment-updated": "Fulfillment details updated.",
+  "referral-status-updated": "Referral payout status updated.",
 };
 
 function getCustomerLabel(name: string | null, email: string | null) {
@@ -161,6 +166,27 @@ export default async function AdminOrderDetailPage({ params, searchParams }: Adm
             <div>
               <dt>Points awarded</dt>
               <dd>{order.referralPointsAwarded}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>
+                <form
+                  action={updateReferralPayoutStatusAction.bind(null, order.id)}
+                  className="admin-referral-status-form"
+                >
+                  <select
+                    aria-label="Referral payout status"
+                    defaultValue={order.referralPayoutStatus}
+                    name="referral_payout_status"
+                  >
+                    <option value="unpaid">Unpaid</option>
+                    <option value="paid">Paid</option>
+                  </select>
+                  <button className="admin-btn" type="submit">
+                    Save
+                  </button>
+                </form>
+              </dd>
             </div>
           </dl>
         </div>

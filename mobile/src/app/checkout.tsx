@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 
 import { Brand } from '@/constants/brand';
-import { apiRequest, type MobileAccount } from '@/lib/api';
+import { apiRequest, publicApiRequest, type MobileAccount } from '@/lib/api';
 import {
   emptyGuestCheckoutDetails,
   loadGuestCheckoutDetails,
@@ -32,6 +32,19 @@ type PaymentStatusResponse = {
   paid: boolean;
   paymentStatus: string;
   status: string;
+};
+
+type CheckoutQuote = {
+  currency: string;
+  discountCents: number;
+  discountDetails: {
+    amount_cents: number;
+    name: string;
+    type: 'minimum_order' | 'referral' | 'shipping';
+  }[];
+  shippingCents: number;
+  subtotalCents: number;
+  totalCents: number;
 };
 
 type PaymentMethod = 'alipay_hk' | 'credit_card' | 'fps';
@@ -58,6 +71,13 @@ const paymentMethods: {
   },
 ];
 
+function formatMoney(cents: number, currency = 'HKD') {
+  return new Intl.NumberFormat('en-HK', {
+    currency,
+    style: 'currency',
+  }).format(cents / 100);
+}
+
 export default function CheckoutScreen() {
   const { loading: authLoading, session } = useAuth();
   const { clearCart, items } = useCart();
@@ -72,6 +92,8 @@ export default function CheckoutScreen() {
   const [verifying, setVerifying] = useState(false);
   const [message, setMessage] = useState('');
   const [completedOrder, setCompletedOrder] = useState('');
+  const [quote, setQuote] = useState<CheckoutQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
   const [guestDetails, setGuestDetails] = useState<GuestCheckoutDetails>(
     emptyGuestCheckoutDetails,
   );
@@ -154,6 +176,42 @@ export default function CheckoutScreen() {
       active = false;
     };
   }, [authLoading, session]);
+
+  useEffect(() => {
+    if (items.length === 0) {
+      setQuote(null);
+      return;
+    }
+
+    let active = true;
+    const timer = setTimeout(() => {
+      setQuoteLoading(true);
+      publicApiRequest<CheckoutQuote>('/api/mobile/checkout/quote', {
+        body: JSON.stringify({ items, referralCode }),
+        method: 'POST',
+      })
+        .then((result) => {
+          if (active) {
+            setQuote(result);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setQuote(null);
+          }
+        })
+        .finally(() => {
+          if (active) {
+            setQuoteLoading(false);
+          }
+        });
+    }, 300);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [items, referralCode]);
 
   async function confirmPayment(orderNumber: string, checkoutSession = session) {
     if (!checkoutSession) return false;
@@ -473,6 +531,44 @@ export default function CheckoutScreen() {
         })}
       </View>
 
+      <View style={styles.summary}>
+        <Text style={styles.sectionTitle}>Order summary</Text>
+        {quoteLoading && !quote ? (
+          <ActivityIndicator color={Brand.orange} />
+        ) : quote ? (
+          <>
+            <SummaryRow
+              label="Subtotal"
+              value={formatMoney(quote.subtotalCents, quote.currency)}
+            />
+            <SummaryRow
+              label="Shipping"
+              value={
+                quote.shippingCents === 0
+                  ? 'FREE'
+                  : formatMoney(quote.shippingCents, quote.currency)
+              }
+            />
+            {quote.discountDetails
+              .filter((discount) => discount.type !== 'shipping')
+              .map((discount, index) => (
+              <SummaryRow
+                key={`${discount.type}-${discount.name}-${index}`}
+                label={discount.name}
+                value={`-${formatMoney(discount.amount_cents, quote.currency)}`}
+              />
+              ))}
+            <SummaryRow
+              emphasized
+              label="Total"
+              value={formatMoney(quote.totalCents, quote.currency)}
+            />
+          </>
+        ) : (
+          <Text style={styles.helperText}>The final total will be confirmed securely.</Text>
+        )}
+      </View>
+
       <Pressable
         disabled={Boolean(checkoutDisabled)}
         onPress={() => void beginCheckout()}
@@ -484,6 +580,23 @@ export default function CheckoutScreen() {
         )}
       </Pressable>
     </ScrollView>
+  );
+}
+
+function SummaryRow({
+  emphasized = false,
+  label,
+  value,
+}: {
+  emphasized?: boolean;
+  label: string;
+  value: string;
+}) {
+  return (
+    <View style={[styles.summaryRow, emphasized && styles.summaryRowEmphasized]}>
+      <Text style={emphasized ? styles.summaryStrong : styles.summaryLabel}>{label}</Text>
+      <Text style={emphasized ? styles.summaryStrong : styles.summaryValue}>{value}</Text>
+    </View>
   );
 }
 
@@ -587,6 +700,29 @@ const styles = StyleSheet.create({
   screen: { backgroundColor: Brand.cream },
   sectionTitle: { color: Brand.darkGreen, fontSize: 19, fontWeight: '800', marginTop: 6 },
   subtitle: { color: Brand.muted, fontSize: 14, lineHeight: 21 },
+  summary: {
+    backgroundColor: Brand.white,
+    borderColor: '#e5dbcc',
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 10,
+    padding: 16,
+  },
+  summaryLabel: { color: Brand.muted, flex: 1, fontSize: 13 },
+  summaryRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 16,
+    justifyContent: 'space-between',
+  },
+  summaryRowEmphasized: {
+    borderTopColor: '#e5dbcc',
+    borderTopWidth: 1,
+    marginTop: 3,
+    paddingTop: 12,
+  },
+  summaryStrong: { color: Brand.darkGreen, fontSize: 17, fontWeight: '800' },
+  summaryValue: { color: Brand.darkGreen, fontSize: 13, fontWeight: '700' },
   successCard: {
     backgroundColor: Brand.white,
     borderRadius: 24,

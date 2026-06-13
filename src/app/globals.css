@@ -1524,6 +1524,21 @@ body {
   margin-top: 5px;
 }
 
+.account-order-link {
+  color: #161616;
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration-line: underline;
+  text-decoration-color: var(--orange);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.account-order-link:hover {
+  color: var(--orange);
+}
+
 .account-order-summary {
   align-items: center;
   display: flex;
@@ -1609,6 +1624,185 @@ body {
 .account-order-status.refunded {
   background: #eff1f3;
   color: #707a83;
+}
+
+.account-order-detail-page {
+  display: grid;
+  gap: 20px;
+}
+
+.account-order-detail-head {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+}
+
+.account-order-detail-head p:last-child {
+  color: #625b54;
+  font-size: 13px;
+  margin: 9px 0 0;
+}
+
+.account-order-detail-actions {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+}
+
+.account-order-detail-actions form {
+  margin: 0;
+}
+
+.account-order-back,
+.account-order-track {
+  color: var(--orange);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.account-order-detail-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.account-order-detail-panel,
+.account-order-items-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.account-order-detail-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.account-order-detail-list div {
+  align-items: start;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(110px, 0.45fr) minmax(0, 1fr);
+  padding: 11px 0;
+}
+
+.account-order-detail-list div:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.account-order-detail-list div:last-child {
+  padding-bottom: 0;
+}
+
+.account-order-detail-list dt {
+  color: #756e67;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.account-order-detail-list dd {
+  color: #161616;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.account-order-shipping-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.account-order-shipping-list div {
+  border-top: 1px solid var(--line);
+  display: block;
+  padding: 12px 16px 12px 0;
+}
+
+.account-order-shipping-list div:nth-child(-n + 2) {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.account-order-shipping-list dd {
+  margin-top: 5px;
+}
+
+.account-order-items-table-wrap {
+  overflow-x: auto;
+}
+
+.account-order-items-table {
+  border-collapse: collapse;
+  min-width: 620px;
+  width: 100%;
+}
+
+.account-order-items-table th,
+.account-order-items-table td {
+  border-bottom: 1px solid var(--line);
+  color: #161616;
+  font-size: 13px;
+  padding: 12px 10px;
+  text-align: left;
+}
+
+.account-order-items-table th {
+  color: #756e67;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.account-order-items-table th:first-child,
+.account-order-items-table td:first-child {
+  padding-left: 0;
+}
+
+.account-order-items-table th:last-child,
+.account-order-items-table td:last-child {
+  padding-right: 0;
+  text-align: right;
+}
+
+.account-order-totals {
+  display: grid;
+  gap: 9px;
+  justify-self: end;
+  min-width: 280px;
+}
+
+.account-order-totals div {
+  align-items: center;
+  display: flex;
+  gap: 40px;
+  justify-content: space-between;
+}
+
+.account-order-totals span {
+  color: #625b54;
+  font-size: 13px;
+}
+
+.account-order-totals strong {
+  color: #161616;
+  font-size: 14px;
+}
+
+.account-order-totals .grand {
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+  padding-top: 12px;
+}
+
+.account-order-totals .grand span,
+.account-order-totals .grand strong {
+  color: #161616;
+  font-size: 18px;
+  font-weight: 800;
 }
 
 .checkout-summary {
@@ -2143,6 +2337,20 @@ body {
     grid-template-columns: 1fr 1fr;
   }
 
+  .account-order-detail-head {
+    align-items: flex-start;
+    gap: 18px;
+  }
+
+  .account-order-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .account-order-detail-actions {
+    align-items: flex-end;
+    flex-direction: column;
+  }
+
   .card {
     height: auto;
   }
@@ -2254,6 +2462,31 @@ body {
 
   .phone {
     display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .account-order-detail-head {
+    display: grid;
+  }
+
+  .account-order-detail-actions {
+    align-items: flex-start;
+  }
+
+  .account-order-detail-list div,
+  .account-order-shipping-list {
+    grid-template-columns: 1fr;
+  }
+
+  .account-order-shipping-list div:nth-child(2) {
+    border-top: 1px solid var(--line);
+    padding-top: 12px;
+  }
+
+  .account-order-totals {
+    justify-self: stretch;
+    min-width: 0;
   }
 }
 
@@ -2714,6 +2947,9 @@ body {
 
 .admin-order-number {
   color: #111;
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-underline-offset: 3px;
 }
 
 .admin-record-title {
@@ -2901,6 +3137,21 @@ body {
   max-width: 720px;
 }
 
+.admin-settings-panel {
+  max-width: 720px;
+}
+
+.admin-settings-form {
+  max-width: 520px;
+}
+
+.admin-settings-form label small {
+  color: var(--admin-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
 .admin-profile-form {
   max-width: 560px;
 }
@@ -3030,6 +3281,28 @@ body {
 
 .admin-payment-reference {
   overflow-wrap: anywhere;
+}
+
+.admin-referral-status-form {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.admin-referral-status-form select {
+  appearance: auto;
+  background: #fff;
+  border: 1px solid #e1ddd8;
+  border-radius: 6px;
+  color: #1c1c1c;
+  font: inherit;
+  min-width: 120px;
+  padding: 9px 11px;
+}
+
+.admin-referral-status-form .admin-btn {
+  min-height: 38px;
+  padding: 0 16px;
 }
 
 .admin-detail-form label {

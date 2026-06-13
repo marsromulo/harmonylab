@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { DiscountRuleForm } from "@/components/admin/DiscountRuleForm";
+import { DiscountCreatePanel } from "@/components/admin/DiscountCreatePanel";
 import { getAdminDiscountRules, type DiscountRule } from "@/lib/discounts";
 import { createDiscountRuleAction } from "./actions";
 
@@ -65,23 +65,14 @@ export default async function AdminDiscountsPage({
 
   return (
     <AdminShell active="discounts">
-      <section className="admin-page-heading">
-        <div>
-          <p className="admin-eyebrow">CHECKOUT PRICING</p>
-          <h1>Discounts</h1>
-        </div>
-        <span>{rules.filter((rule) => rule.isActive).length} active rules</span>
-      </section>
+      <DiscountCreatePanel
+        action={createDiscountRuleAction}
+        activeRuleCount={rules.filter((rule) => rule.isActive).length}
+        initiallyOpen={Boolean(error)}
+      />
 
       {errorMessage ? <p className="admin-form-alert error">{errorMessage}</p> : null}
       {successMessage ? <p className="admin-form-alert success">{successMessage}</p> : null}
-
-      <section className="admin-panel admin-form-panel admin-discount-create-panel">
-        <div className="admin-panel-head">
-          <h2>Add Discount</h2>
-        </div>
-        <DiscountRuleForm action={createDiscountRuleAction} submitLabel="Add Discount" />
-      </section>
 
       <section className="admin-panel admin-table-panel admin-discounts-panel">
         <div className="admin-panel-head">
