@@ -12,11 +12,9 @@ import {
   getProductsByIds,
   type MobileProduct,
 } from '@/lib/products';
-import { useAuth } from '@/providers/auth-provider';
 import { useCart } from '@/providers/cart-provider';
 
 export default function CartScreen() {
-  const { session } = useAuth();
   const { clearCart, hydrated, items, removeItem, updateQuantity } = useCart();
   const [products, setProducts] = useState<MobileProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,11 +115,9 @@ export default function CartScreen() {
               </View>
               <Text style={styles.muted}>Shipping is calculated securely at checkout.</Text>
               <Pressable
-                onPress={() => router.push(session ? '/checkout' : '/account')}
+                onPress={() => router.push('/checkout')}
                 style={styles.primaryButton}>
-                <Text style={styles.primaryButtonText}>
-                  {session ? 'CONTINUE TO CHECKOUT' : 'SIGN IN TO CHECK OUT'}
-                </Text>
+                <Text style={styles.primaryButtonText}>CONTINUE TO CHECKOUT</Text>
               </Pressable>
               <Pressable onPress={clearCart}>
                 <Text style={styles.clear}>CLEAR CART</Text>
@@ -180,4 +176,3 @@ const styles = StyleSheet.create({
   title: { color: Brand.darkGreen, fontSize: 32, fontWeight: '800' },
   total: { color: Brand.orange, fontSize: 20, fontWeight: '800' },
 });
-

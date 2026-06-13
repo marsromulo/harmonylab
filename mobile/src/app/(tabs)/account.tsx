@@ -59,6 +59,7 @@ export default function AccountScreen() {
   } = useNotifications();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -112,8 +113,18 @@ export default function AccountScreen() {
   async function submitAuth() {
     setMessage(null);
 
-    if (!email.trim() || password.length < 8) {
-      setMessage({ text: 'Enter an email and a password with at least 8 characters.', type: 'error' });
+    if (
+      !email.trim() ||
+      password.length < 6 ||
+      (mode === 'register' && (!firstName.trim() || !lastName.trim()))
+    ) {
+      setMessage({
+        text:
+          mode === 'register'
+            ? 'Enter your first name, last name, email, and a password with at least 6 characters.'
+            : 'Enter your email and password.',
+        type: 'error',
+      });
       return;
     }
 
@@ -131,6 +142,7 @@ export default function AccountScreen() {
                   first_name: firstName.trim(),
                   full_name: [firstName.trim(), lastName.trim()].filter(Boolean).join(' '),
                   last_name: lastName.trim(),
+                  phone: phone ? `+852${phone}` : '',
                 },
               },
             });
@@ -297,7 +309,7 @@ export default function AccountScreen() {
                       value={addressForm.lastName}
                     />
                   </View>
-                  {(['label', 'phone', 'addressLine1', 'addressLine2', 'region', 'postalCode'] as const).map(
+                  {(['label', 'addressLine1', 'addressLine2', 'region', 'postalCode'] as const).map(
                     (field) => (
                       <TextInput
                         key={field}
@@ -316,6 +328,23 @@ export default function AccountScreen() {
                       />
                     ),
                   )}
+                  <View style={styles.phoneField}>
+                    <Text style={styles.phonePrefix}>+852</Text>
+                    <TextInput
+                      keyboardType="number-pad"
+                      maxLength={8}
+                      onChangeText={(value) =>
+                        setAddressForm((form) => ({
+                          ...form,
+                          phone: value.replace(/\D/g, '').slice(0, 8),
+                        }))
+                      }
+                      placeholder="Phone number"
+                      placeholderTextColor="#929a94"
+                      style={[styles.input, styles.phoneInput]}
+                      value={addressForm.phone}
+                    />
+                  </View>
                   <TextInput
                     onChangeText={(value) => setAddressForm((form) => ({ ...form, city: value }))}
                     placeholder="City"
@@ -431,10 +460,24 @@ export default function AccountScreen() {
           <Text style={styles.subtitle}>Access your HarmonyLab account across web and mobile.</Text>
           {message ? <Message message={message} /> : null}
           {mode === 'register' ? (
-            <View style={styles.row}>
-              <AddressInput label="First name" onChangeText={setFirstName} value={firstName} />
-              <AddressInput label="Last name" onChangeText={setLastName} value={lastName} />
-            </View>
+            <>
+              <View style={styles.row}>
+                <AddressInput label="First name" onChangeText={setFirstName} value={firstName} />
+                <AddressInput label="Last name" onChangeText={setLastName} value={lastName} />
+              </View>
+              <View style={styles.phoneField}>
+                <Text style={styles.phonePrefix}>+852</Text>
+                <TextInput
+                  keyboardType="number-pad"
+                  maxLength={8}
+                  onChangeText={(value) => setPhone(value.replace(/\D/g, '').slice(0, 8))}
+                  placeholder="Phone number"
+                  placeholderTextColor="#929a94"
+                  style={[styles.input, styles.phoneInput]}
+                  value={phone}
+                />
+              </View>
+            </>
           ) : null}
           <TextInput
             autoCapitalize="none"
@@ -538,6 +581,19 @@ const styles = StyleSheet.create({
   eyebrow: { color: Brand.orange, fontSize: 12, fontWeight: '800', letterSpacing: 1.5 },
   flex: { flex: 1 },
   formCard: { backgroundColor: Brand.lightGreen, borderRadius: 18, gap: 10, padding: 16 },
+  phoneField: { alignItems: 'center', flexDirection: 'row' },
+  phoneInput: { borderBottomLeftRadius: 0, borderTopLeftRadius: 0, flex: 1 },
+  phonePrefix: {
+    backgroundColor: Brand.lightGreen,
+    borderBottomLeftRadius: 14,
+    borderTopLeftRadius: 14,
+    color: Brand.darkGreen,
+    fontSize: 14,
+    fontWeight: '800',
+    minHeight: 50,
+    paddingHorizontal: 14,
+    paddingTop: 16,
+  },
   input: {
     backgroundColor: Brand.white,
     borderColor: '#e5dbcc',

@@ -15,6 +15,14 @@ import {
 
 import { Brand } from '@/constants/brand';
 import { apiRequest, type MobileAccount } from '@/lib/api';
+import {
+  emptyGuestCheckoutDetails,
+  loadGuestCheckoutDetails,
+  normalizeLocalPhone,
+  saveGuestCheckoutDetails,
+  type GuestCheckoutDetails,
+} from '@/lib/guest-checkout';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 import { useCart } from '@/providers/cart-provider';
 import { useReferral } from '@/providers/referral-provider';
@@ -26,23 +34,78 @@ type PaymentStatusResponse = {
   status: string;
 };
 
+type PaymentMethod = 'alipay_hk' | 'credit_card' | 'fps';
+
+const paymentMethods: {
+  detail: string;
+  id: PaymentMethod;
+  label: string;
+}[] = [
+  {
+    id: 'credit_card',
+    label: 'Credit Card',
+    detail: 'Visa, Mastercard, and supported card networks.',
+  },
+  {
+    id: 'alipay_hk',
+    label: 'AlipayHK',
+    detail: 'Continue to Wonder and pay from the AlipayHK app.',
+  },
+  {
+    id: 'fps',
+    label: 'FPS',
+    detail: 'Continue to Wonder and pay with Hong Kong FPS.',
+  },
+];
+
 export default function CheckoutScreen() {
-  const { session } = useAuth();
+  const { loading: authLoading, session } = useAuth();
   const { clearCart, items } = useCart();
   const { referralCode: savedReferralCode } = useReferral();
   const [account, setAccount] = useState<MobileAccount | null>(null);
   const [addressId, setAddressId] = useState('');
   const [referralCode, setReferralCode] = useState(savedReferralCode);
   const [deliveryNotes, setDeliveryNotes] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit_card');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [message, setMessage] = useState('');
   const [completedOrder, setCompletedOrder] = useState('');
+  const [guestDetails, setGuestDetails] = useState<GuestCheckoutDetails>(
+    emptyGuestCheckoutDetails,
+  );
+  const isGuest = !session || session.user.is_anonymous === true;
 
   useEffect(() => {
+    let active = true;
+
+    loadGuestCheckoutDetails()
+      .then((details) => {
+        if (active) {
+          setGuestDetails(details);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (savedReferralCode && !referralCode) {
+      setReferralCode(savedReferralCode);
+    }
+  }, [referralCode, savedReferralCode]);
+
+  useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
     if (!session) {
-      router.replace('/account');
+      setLoading(false);
       return;
     }
 
@@ -57,6 +120,23 @@ export default function CheckoutScreen() {
               result.addresses[0]?.id ??
               '',
           );
+          const defaultAddress =
+            result.addresses.find((address) => address.is_default) ?? result.addresses[0];
+
+          if (session.user.is_anonymous && defaultAddress) {
+            setGuestDetails((current) => ({
+              ...current,
+              addressLine1: defaultAddress.address_line1,
+              addressLine2: defaultAddress.address_line2 ?? '',
+              city: defaultAddress.city,
+              email: result.profile.email ?? current.email,
+              firstName: defaultAddress.first_name ?? result.profile.firstName ?? '',
+              lastName: defaultAddress.last_name ?? result.profile.lastName ?? '',
+              phone: normalizeLocalPhone(defaultAddress.phone ?? result.profile.phone ?? ''),
+              postalCode: defaultAddress.postal_code ?? '',
+              region: defaultAddress.region ?? 'Hong Kong',
+            }));
+          }
         }
       })
       .catch((error: unknown) => {
@@ -73,19 +153,16 @@ export default function CheckoutScreen() {
     return () => {
       active = false;
     };
-  }, [session]);
+  }, [authLoading, session]);
 
-  async function confirmPayment(orderNumber: string) {
-    if (!session) {
-      return false;
-    }
-
+  async function confirmPayment(orderNumber: string, checkoutSession = session) {
+    if (!checkoutSession) return false;
     setVerifying(true);
 
     try {
       const status = await apiRequest<PaymentStatusResponse>(
         `/api/mobile/checkout/status?order=${encodeURIComponent(orderNumber)}`,
-        session,
+        checkoutSession,
       );
 
       if (status.paid) {
@@ -108,7 +185,7 @@ export default function CheckoutScreen() {
   }
 
   async function beginCheckout() {
-    if (!session || !addressId || items.length === 0) {
+    if (items.length === 0 || (!isGuest && !addressId)) {
       return;
     }
 
@@ -116,15 +193,49 @@ export default function CheckoutScreen() {
     setMessage('');
 
     try {
+      let checkoutSession = session;
+
+      if (isGuest) {
+        await saveGuestCheckoutDetails(guestDetails);
+      }
+
+      if (!checkoutSession) {
+        const { data, error } = await supabase.auth.signInAnonymously({
+          options: {
+            data: {
+              checkout_type: 'guest',
+              first_name: guestDetails.firstName.trim(),
+              full_name: [guestDetails.firstName.trim(), guestDetails.lastName.trim()]
+                .filter(Boolean)
+                .join(' '),
+              last_name: guestDetails.lastName.trim(),
+              phone: guestDetails.phone ? `+852${guestDetails.phone}` : '',
+            },
+          },
+        });
+
+        if (error || !data.session) {
+          throw new Error(
+            error?.code === 'anonymous_provider_disabled'
+              ? 'Guest checkout is not enabled yet. Please create an account or sign in.'
+              : error?.message || 'Unable to start a guest session.',
+          );
+        }
+
+        checkoutSession = data.session;
+      }
+
       const returnUrl = Linking.createURL('checkout-complete');
       const result = await apiRequest<{ checkoutUrl: string; orderNumber: string }>(
         '/api/mobile/checkout',
-        session,
+        checkoutSession,
         {
           body: JSON.stringify({
-            addressId,
+            addressId: isGuest ? '' : addressId,
             deliveryNotes,
+            ...(isGuest ? guestDetails : {}),
             items,
+            paymentMethod,
             referralCode,
             returnUrl,
           }),
@@ -138,7 +249,7 @@ export default function CheckoutScreen() {
       }
 
       await WebBrowser.openAuthSessionAsync(result.checkoutUrl, returnUrl);
-      await confirmPayment(result.orderNumber);
+      await confirmPayment(result.orderNumber, checkoutSession);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to start checkout.');
     } finally {
@@ -172,12 +283,31 @@ export default function CheckoutScreen() {
     );
   }
 
+  const guestDetailsComplete =
+    guestDetails.firstName.trim() &&
+    guestDetails.lastName.trim() &&
+    guestDetails.email.trim() &&
+    guestDetails.phone.length === 8 &&
+    guestDetails.addressLine1.trim() &&
+    guestDetails.city.trim();
+  const checkoutDisabled =
+    submitting ||
+    verifying ||
+    items.length === 0 ||
+    (isGuest ? !guestDetailsComplete : !addressId);
+
+  function updateGuestDetail(key: keyof GuestCheckoutDetails, value: string) {
+    setGuestDetails((current) => ({ ...current, [key]: value }));
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
       <Text style={styles.eyebrow}>SECURE CHECKOUT</Text>
       <Text style={styles.title}>Delivery and payment</Text>
       <Text style={styles.subtitle}>
-        Choose a saved address. Payment is verified before HarmonyLab clears your cart.
+        {isGuest
+          ? 'Continue as a guest. Your details will be remembered securely on this device.'
+          : 'Choose a saved address. Payment is verified before HarmonyLab clears your cart.'}
       </Text>
 
       {message ? (
@@ -187,7 +317,87 @@ export default function CheckoutScreen() {
       ) : null}
 
       <Text style={styles.sectionTitle}>Delivery address</Text>
-      {account?.addresses.length ? (
+      {isGuest ? (
+        <View style={styles.guestForm}>
+          <View style={styles.inputRow}>
+            <TextInput
+              autoCapitalize="words"
+              onChangeText={(value) => updateGuestDetail('firstName', value)}
+              placeholder="First name"
+              placeholderTextColor="#929a94"
+              style={[styles.input, styles.rowInput]}
+              value={guestDetails.firstName}
+            />
+            <TextInput
+              autoCapitalize="words"
+              onChangeText={(value) => updateGuestDetail('lastName', value)}
+              placeholder="Last name"
+              placeholderTextColor="#929a94"
+              style={[styles.input, styles.rowInput]}
+              value={guestDetails.lastName}
+            />
+          </View>
+          <TextInput
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            onChangeText={(value) => updateGuestDetail('email', value)}
+            placeholder="Email address"
+            placeholderTextColor="#929a94"
+            style={styles.input}
+            value={guestDetails.email}
+          />
+          <View style={styles.phoneField}>
+            <Text style={styles.phonePrefix}>+852</Text>
+            <TextInput
+              keyboardType="number-pad"
+              maxLength={8}
+              onChangeText={(value) => updateGuestDetail('phone', normalizeLocalPhone(value))}
+              placeholder="Phone number"
+              placeholderTextColor="#929a94"
+              style={[styles.input, styles.phoneInput]}
+              value={guestDetails.phone}
+            />
+          </View>
+          <TextInput
+            onChangeText={(value) => updateGuestDetail('addressLine1', value)}
+            placeholder="Shipping address"
+            placeholderTextColor="#929a94"
+            style={styles.input}
+            value={guestDetails.addressLine1}
+          />
+          <TextInput
+            onChangeText={(value) => updateGuestDetail('addressLine2', value)}
+            placeholder="Address line 2 (optional)"
+            placeholderTextColor="#929a94"
+            style={styles.input}
+            value={guestDetails.addressLine2}
+          />
+          <View style={styles.inputRow}>
+            <TextInput
+              onChangeText={(value) => updateGuestDetail('city', value)}
+              placeholder="District / city"
+              placeholderTextColor="#929a94"
+              style={[styles.input, styles.rowInput]}
+              value={guestDetails.city}
+            />
+            <TextInput
+              onChangeText={(value) => updateGuestDetail('region', value)}
+              placeholder="Region"
+              placeholderTextColor="#929a94"
+              style={[styles.input, styles.rowInput]}
+              value={guestDetails.region}
+            />
+          </View>
+          <TextInput
+            onChangeText={(value) => updateGuestDetail('postalCode', value)}
+            placeholder="Postal code (optional)"
+            placeholderTextColor="#929a94"
+            style={styles.input}
+            value={guestDetails.postalCode}
+          />
+        </View>
+      ) : account?.addresses.length ? (
         account.addresses.map((address) => (
           <Pressable
             key={address.id}
@@ -218,12 +428,22 @@ export default function CheckoutScreen() {
 
       <TextInput
         autoCapitalize="characters"
-        onChangeText={setReferralCode}
+        onChangeText={(value) =>
+          setReferralCode(
+            value
+              .replace(/[^\w-]/g, '')
+              .toUpperCase()
+              .slice(0, 40),
+          )
+        }
         placeholder="Referral code (optional)"
         placeholderTextColor="#929a94"
         style={styles.input}
         value={referralCode}
       />
+      <Text style={styles.helperText}>
+        Enter a valid code to receive any referral benefit available for this purchase.
+      </Text>
       <TextInput
         multiline
         onChangeText={setDeliveryNotes}
@@ -233,13 +453,30 @@ export default function CheckoutScreen() {
         value={deliveryNotes}
       />
 
+      <Text style={styles.sectionTitle}>Payment method</Text>
+      <View style={styles.paymentOptions}>
+        {paymentMethods.map((method) => {
+          const selected = paymentMethod === method.id;
+
+          return (
+            <Pressable
+              key={method.id}
+              onPress={() => setPaymentMethod(method.id)}
+              style={[styles.paymentOption, selected && styles.paymentOptionSelected]}>
+              <View style={[styles.radio, selected && styles.radioSelected]} />
+              <View style={styles.paymentCopy}>
+                <Text style={styles.paymentTitle}>{method.label}</Text>
+                <Text style={styles.paymentDetail}>{method.detail}</Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+
       <Pressable
-        disabled={submitting || verifying || !addressId || items.length === 0}
+        disabled={Boolean(checkoutDisabled)}
         onPress={() => void beginCheckout()}
-        style={[
-          styles.button,
-          (!addressId || items.length === 0 || submitting || verifying) && styles.buttonDisabled,
-        ]}>
+        style={[styles.button, checkoutDisabled && styles.buttonDisabled]}>
         {submitting || verifying ? (
           <ActivityIndicator color={Brand.white} />
         ) : (
@@ -278,6 +515,8 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', backgroundColor: Brand.cream, flex: 1, justifyContent: 'center' },
   content: { gap: 14, padding: 20, paddingBottom: 42 },
   eyebrow: { color: Brand.orange, fontSize: 12, fontWeight: '800', letterSpacing: 1.5 },
+  guestForm: { gap: 10 },
+  helperText: { color: Brand.muted, fontSize: 12, lineHeight: 18, marginTop: -8 },
   input: {
     backgroundColor: Brand.white,
     borderColor: '#e5dbcc',
@@ -288,6 +527,7 @@ const styles = StyleSheet.create({
     minHeight: 50,
     paddingHorizontal: 15,
   },
+  inputRow: { flexDirection: 'row', gap: 10 },
   link: { color: Brand.orange, fontSize: 12, fontWeight: '800', marginTop: 8 },
   message: { backgroundColor: Brand.lightGreen, borderRadius: 16, padding: 16 },
   messageText: { color: Brand.darkGreen, fontSize: 13, lineHeight: 20 },
@@ -306,6 +546,34 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.8,
   },
+  paymentCopy: { flex: 1, gap: 4 },
+  paymentDetail: { color: Brand.muted, fontSize: 12, lineHeight: 18 },
+  paymentOption: {
+    alignItems: 'flex-start',
+    backgroundColor: Brand.white,
+    borderColor: '#e5dbcc',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    padding: 16,
+  },
+  paymentOptionSelected: { borderColor: Brand.orange, borderWidth: 2 },
+  paymentOptions: { gap: 10 },
+  paymentTitle: { color: Brand.darkGreen, fontSize: 15, fontWeight: '800' },
+  phoneField: { alignItems: 'center', flexDirection: 'row' },
+  phoneInput: { borderBottomLeftRadius: 0, borderTopLeftRadius: 0, flex: 1 },
+  phonePrefix: {
+    backgroundColor: Brand.lightGreen,
+    borderBottomLeftRadius: 14,
+    borderTopLeftRadius: 14,
+    color: Brand.darkGreen,
+    fontSize: 14,
+    fontWeight: '800',
+    minHeight: 50,
+    paddingHorizontal: 14,
+    paddingTop: 16,
+  },
   radio: {
     borderColor: Brand.muted,
     borderRadius: 999,
@@ -315,6 +583,7 @@ const styles = StyleSheet.create({
     width: 18,
   },
   radioSelected: { backgroundColor: Brand.orange, borderColor: Brand.orange },
+  rowInput: { flex: 1 },
   screen: { backgroundColor: Brand.cream },
   sectionTitle: { color: Brand.darkGreen, fontSize: 19, fontWeight: '800', marginTop: 6 },
   subtitle: { color: Brand.muted, fontSize: 14, lineHeight: 21 },

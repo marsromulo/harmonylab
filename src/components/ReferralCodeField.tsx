@@ -14,6 +14,7 @@ export function ReferralCodeField({ formId, savedCode }: { formId: string; saved
     return (
       <label className="checkout-referral">
         Referral code
+        <small>A valid referral code links eligible referral benefits to this purchase.</small>
         <input key="saved-referral-code" disabled value={normalizedSavedCode} />
         <input form={formId} name="referral_code" type="hidden" value={normalizedSavedCode} />
       </label>
@@ -23,6 +24,7 @@ export function ReferralCodeField({ formId, savedCode }: { formId: string; saved
   return (
     <label className="checkout-referral">
       Referral code
+      <small>Enter a valid code to receive any referral benefit available for this purchase.</small>
       <input
         key="manual-referral-code"
         form={formId}

@@ -3,7 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { formatOrderDate, formatOrderMoney, getAdminOrderDetails, getOrderStatusLabel } from "@/lib/orders";
+import {
+  formatOrderDate,
+  formatOrderMoney,
+  getAdminOrderDetails,
+  getOrderStatusLabel,
+  getPaymentMethodLabel,
+  getPaymentProviderLabel,
+} from "@/lib/orders";
 import { updateOrderFulfillmentAction } from "../actions";
 
 export const metadata: Metadata = {
@@ -77,11 +84,27 @@ export default async function AdminOrderDetailPage({ params, searchParams }: Adm
             </div>
             <div>
               <dt>Payment method</dt>
-              <dd>{order.paymentMethod === "credit_card" ? "Credit Card" : order.paymentMethod ?? "Not selected"}</dd>
+              <dd>{getPaymentMethodLabel(order.paymentMethod)}</dd>
             </div>
             <div>
               <dt>Payment status</dt>
               <dd>{order.paymentStatus}</dd>
+            </div>
+            <div>
+              <dt>Payment provider</dt>
+              <dd>{getPaymentProviderLabel(order.paymentProvider)}</dd>
+            </div>
+            <div>
+              <dt>Wonder invoice</dt>
+              <dd className="admin-payment-reference">
+                {order.wonderOrderNumber ?? "Not available"}
+              </dd>
+            </div>
+            <div>
+              <dt>Wonder transaction UUID</dt>
+              <dd className="admin-payment-reference">
+                {order.wonderTransactionId ?? "Not available"}
+              </dd>
             </div>
             <div>
               <dt>Paid at</dt>

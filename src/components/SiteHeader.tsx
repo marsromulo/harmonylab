@@ -1,13 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { WebsiteReferralGate } from "@/components/WebsiteReferralGate";
 import { getCartSummary } from "@/lib/cart";
-import { getCurrentCustomer } from "@/lib/customers";
-import { getWebsiteReferralCookies } from "@/lib/referrals";
 
 type SiteHeaderProps = {
   active?: "home" | "products" | "faq" | "shipping" | "contact" | "account";
-  showReferralGate?: boolean;
 };
 
 const navItems = [
@@ -18,19 +14,11 @@ const navItems = [
   { key: "contact", label: "Contact Us", href: "/contact-us" },
 ] as const;
 
-export async function SiteHeader({ active = "home", showReferralGate = true }: SiteHeaderProps) {
-  const [cart, { profile }, referralCookies] = await Promise.all([
-    getCartSummary(),
-    getCurrentCustomer(),
-    getWebsiteReferralCookies(),
-  ]);
-  const hasReferralCode = Boolean(profile?.referralCode || referralCookies.referralCode);
-  const shouldPromptForReferral = showReferralGate && !hasReferralCode && !referralCookies.skipped;
+export async function SiteHeader({ active = "home" }: SiteHeaderProps) {
+  const cart = await getCartSummary();
 
   return (
-    <>
-      <WebsiteReferralGate shouldPrompt={shouldPromptForReferral} />
-      <header className="site-header">
+    <header className="site-header">
         <Link className="site-brand" href="/" aria-label="Harmony Lab Beauty home">
           <Image
             src="/hl-logo.png"
@@ -70,7 +58,6 @@ export async function SiteHeader({ active = "home", showReferralGate = true }: S
             <em>{cart.itemCount}</em>
           </Link>
         </div>
-      </header>
-    </>
+    </header>
   );
 }

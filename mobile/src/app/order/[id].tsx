@@ -109,6 +109,23 @@ export default function OrderDetailsScreen() {
     order.shipping_postal_code,
     order.shipping_country,
   ].filter(Boolean);
+  const paymentMethod =
+    order.payment_method === 'alipay_hk' || order.payment_method === 'alipayhk'
+      ? 'AlipayHK'
+      : order.payment_method === 'fps'
+        ? 'FPS'
+      : order.payment_method === 'credit_card'
+        ? 'Credit Card'
+        : order.payment_method || 'Not selected';
+  const paymentProvider =
+    order.payment_provider === 'wonder'
+      ? 'Wonder'
+      : order.payment_provider === 'stripe'
+        ? 'Stripe'
+        : order.payment_provider || 'Not available';
+  const transactionReference = order.wonder_transaction_id
+    ? `${order.wonder_transaction_id.slice(0, 8)}...${order.wonder_transaction_id.slice(-4)}`
+    : 'Pending';
 
   return (
     <Screen>
@@ -147,6 +164,17 @@ export default function OrderDetailsScreen() {
         </View>
 
         <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Payment record</Text>
+          <PaymentRow label="Method" value={paymentMethod} />
+          <PaymentRow label="Provider" value={paymentProvider} />
+          <PaymentRow
+            label="Invoice reference"
+            value={order.wonder_order_number || order.order_number}
+          />
+          <PaymentRow label="Transaction reference" value={transactionReference} />
+        </View>
+
+        <View style={styles.card}>
           <Text style={styles.sectionTitle}>Delivery address</Text>
           <Text style={styles.cardText}>{address.join('\n') || 'Not provided'}</Text>
           {order.delivery_notes ? (
@@ -179,6 +207,15 @@ export default function OrderDetailsScreen() {
         ) : null}
       </ScrollView>
     </Screen>
+  );
+}
+
+function PaymentRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.paymentRow}>
+      <Text style={styles.muted}>{label}</Text>
+      <Text style={styles.paymentValue}>{value}</Text>
+    </View>
   );
 }
 
@@ -227,6 +264,8 @@ const styles = StyleSheet.create({
   },
   link: { color: Brand.orange, fontSize: 12, fontWeight: '800', marginTop: 4 },
   muted: { color: Brand.muted, fontSize: 13, lineHeight: 20 },
+  paymentRow: { gap: 3 },
+  paymentValue: { color: Brand.darkGreen, fontSize: 14, fontWeight: '700' },
   sectionTitle: { color: Brand.darkGreen, fontSize: 17, fontWeight: '800' },
   status: { color: Brand.orange, fontSize: 12, fontWeight: '800' },
   statusRow: { flexDirection: 'row', justifyContent: 'space-between' },

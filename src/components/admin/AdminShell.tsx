@@ -5,7 +5,16 @@ import { getAdminAvatarUrl, getAdminDisplayName, requireAdmin } from "@/lib/admi
 import { AdminIcon } from "./AdminIcon";
 
 type AdminShellProps = {
-  active: "dashboard" | "orders" | "products" | "customers" | "members" | "reports" | "settings" | "profile";
+  active:
+    | "dashboard"
+    | "orders"
+    | "products"
+    | "discounts"
+    | "customers"
+    | "members"
+    | "reports"
+    | "settings"
+    | "profile";
   children: React.ReactNode;
 };
 
@@ -13,6 +22,7 @@ const navItems = [
   { key: "dashboard", label: "Dashboard", href: "/admin", icon: "dashboard" },
   { key: "orders", label: "Orders", href: "/admin/orders", icon: "bag" },
   { key: "products", label: "Products", href: "/admin/products", icon: "dashboard" },
+  { key: "discounts", label: "Discounts", href: "/admin/discounts", icon: "discount" },
   { key: "customers", label: "Customers", href: "/admin/customers", icon: "users" },
   { key: "members", label: "Members", href: "/admin/members", icon: "users" },
   { key: "reports", label: "Reports", href: "/admin/reports", icon: "dashboard" },

@@ -1,4 +1,5 @@
 import { ensureCustomerProfile } from "@/lib/customers";
+import { normalizeHongKongPhone } from "@/lib/customer-fields";
 import { getMobileUser, getRequiredString, mobileJson, mobileOptions } from "@/lib/mobile-api";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
   const lastName = getRequiredString(body.lastName, 80);
   const addressLine1 = getRequiredString(body.addressLine1, 200);
   const city = getRequiredString(body.city, 100);
+  const phone = normalizeHongKongPhone(getRequiredString(body.phone, 20));
 
   if (!firstName || !lastName || !addressLine1 || !city) {
     return mobileJson(
@@ -38,7 +40,7 @@ export async function POST(request: Request) {
       firstName,
       fullName: `${firstName} ${lastName}`,
       lastName,
-      phone: getRequiredString(body.phone, 40),
+      phone,
     });
     const supabase = createSupabaseServiceRoleClient();
     const { count, error: countError } = await supabase
@@ -58,7 +60,7 @@ export async function POST(request: Request) {
         label: getRequiredString(body.label, 50) || null,
         first_name: firstName,
         last_name: lastName,
-        phone: getRequiredString(body.phone, 40) || null,
+        phone: phone || null,
         address_line1: addressLine1,
         address_line2: getRequiredString(body.addressLine2, 200) || null,
         city,
@@ -105,4 +107,3 @@ export async function POST(request: Request) {
     return mobileJson({ error: "Unable to save this address." }, { status: 500 });
   }
 }
-

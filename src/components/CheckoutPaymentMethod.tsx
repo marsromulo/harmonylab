@@ -11,7 +11,12 @@ const paymentMethods = [
   {
     id: "alipay_hk",
     label: "AlipayHK",
-    detail: "Pay with AlipayHK when wallet processing is enabled.",
+    detail: "Continue to Wonder and complete payment with AlipayHK.",
+  },
+  {
+    id: "fps",
+    label: "FPS",
+    detail: "Continue to Wonder and complete payment with Hong Kong FPS.",
   },
 ];
 

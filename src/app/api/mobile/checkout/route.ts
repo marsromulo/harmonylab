@@ -1,12 +1,14 @@
-import { createCheckoutOrder, setOrderCheckoutSession } from "@/lib/checkout";
-import { ensureCustomerProfile } from "@/lib/customers";
+import { createCheckoutOrder, setOrderWonderPayment } from "@/lib/checkout";
+import { normalizeEmail, normalizeHongKongPhone } from "@/lib/customer-fields";
+import { ensureCustomerProfile, upsertDefaultCustomerAddress } from "@/lib/customers";
 import { getMobileUser, getRequiredString, mobileJson, mobileOptions } from "@/lib/mobile-api";
 import {
   getMobileCheckoutServerOrigin,
   getSafeMobileReturnUrl,
 } from "@/lib/mobile-checkout-return";
-import { getSiteUrl, getStripe, getStripeShippingDetails } from "@/lib/stripe";
+import { validateMemberReferralCode } from "@/lib/referrals";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { createWonderPaymentLink, getSiteUrl } from "@/lib/wonder";
 
 type CartLine = {
   productId: string;
@@ -20,6 +22,14 @@ type ProductRow = {
   name: string;
   price_cents: number;
 };
+
+function getPaymentMethod(value: unknown) {
+  if (value === "alipay_hk" || value === "fps") {
+    return value;
+  }
+
+  return "credit_card";
+}
 
 function normalizeLines(value: unknown): CartLine[] {
   if (!Array.isArray(value)) {
@@ -70,41 +80,97 @@ export async function POST(request: Request) {
 
   const addressId = getRequiredString(body.addressId, 100);
   const lines = normalizeLines(body.items);
+  const paymentMethod = getPaymentMethod(body.paymentMethod);
   const returnUrl = getSafeMobileReturnUrl(body.returnUrl);
 
-  if (!addressId || lines.length === 0 || !returnUrl) {
-    return mobileJson(
-      { error: "Choose an address, add at least one product, and use a valid app return URL." },
-      { status: 400 },
-    );
+  if (lines.length === 0 || !returnUrl) {
+    return mobileJson({ error: "Add at least one product and use a valid app return URL." }, { status: 400 });
   }
 
   try {
-    const profile = await ensureCustomerProfile(auth.user);
+    let profile = await ensureCustomerProfile(auth.user);
     const supabase = createSupabaseServiceRoleClient();
-    const [{ data: address, error: addressError }, { data: productData, error: productsError }] =
-      await Promise.all([
-        supabase
-          .from("customer_addresses")
-          .select(
-            "first_name,last_name,phone,address_line1,address_line2,city,region,postal_code,country",
-          )
-          .eq("id", addressId)
-          .eq("customer_id", profile.id)
-          .maybeSingle(),
-        supabase
-          .from("products")
-          .select("id,name,price_cents,currency,inventory_quantity")
-          .in(
-            "id",
-            lines.map((line) => line.productId),
-          )
-          .eq("is_active", true),
-      ]);
+    let address: {
+      address_line1: string;
+      address_line2: string | null;
+      city: string;
+      country: string;
+      first_name: string | null;
+      last_name: string | null;
+      phone: string | null;
+      postal_code: string | null;
+      region: string | null;
+    };
 
-    if (addressError || !address) {
-      return mobileJson({ error: "The selected address is unavailable." }, { status: 400 });
+    if (addressId) {
+      const { data, error } = await supabase
+        .from("customer_addresses")
+        .select(
+          "first_name,last_name,phone,address_line1,address_line2,city,region,postal_code,country",
+        )
+        .eq("id", addressId)
+        .eq("customer_id", profile.id)
+        .maybeSingle();
+
+      if (error || !data) {
+        return mobileJson({ error: "The selected address is unavailable." }, { status: 400 });
+      }
+
+      address = data;
+    } else {
+      const firstName = getRequiredString(body.firstName, 80);
+      const lastName = getRequiredString(body.lastName, 80);
+      const email = normalizeEmail(getRequiredString(body.email, 254));
+      const phone = normalizeHongKongPhone(getRequiredString(body.phone, 20));
+      const addressLine1 = getRequiredString(body.addressLine1, 200);
+      const city = getRequiredString(body.city, 100);
+
+      if (!firstName || !lastName || !email || !phone || !addressLine1 || !city) {
+        return mobileJson(
+          { error: "Guest name, email, phone, address, and city are required." },
+          { status: 400 },
+        );
+      }
+
+      profile = await ensureCustomerProfile(auth.user, {
+        email,
+        firstName,
+        fullName: `${firstName} ${lastName}`,
+        lastName,
+        phone,
+      });
+      address = {
+        address_line1: addressLine1,
+        address_line2: getRequiredString(body.addressLine2, 200) || null,
+        city,
+        country: "Hong Kong",
+        first_name: firstName,
+        last_name: lastName,
+        phone,
+        postal_code: getRequiredString(body.postalCode, 30) || null,
+        region: getRequiredString(body.region, 100) || null,
+      };
+      await upsertDefaultCustomerAddress(profile.id, {
+        firstName,
+        lastName,
+        phone,
+        addressLine1,
+        addressLine2: address.address_line2,
+        city,
+        region: address.region,
+        postalCode: address.postal_code,
+        country: address.country,
+      });
     }
+
+    const { data: productData, error: productsError } = await supabase
+      .from("products")
+      .select("id,name,price_cents,currency,inventory_quantity")
+      .in(
+        "id",
+        lines.map((line) => line.productId),
+      )
+      .eq("is_active", true);
 
     if (productsError) {
       throw new Error(productsError.message);
@@ -135,23 +201,36 @@ export async function POST(request: Request) {
       subtotalCents += product.price_cents * line.quantity;
     }
 
+    const enteredReferralCode = getRequiredString(body.referralCode, 40)
+      .replace(/[^\w-]/g, "")
+      .toUpperCase();
+    let referralCode = "";
+
+    if (enteredReferralCode) {
+      const referralResult = await validateMemberReferralCode(enteredReferralCode);
+
+      if (!referralResult.valid) {
+        return mobileJson({ error: "That referral code was not found." }, { status: 400 });
+      }
+
+      referralCode = referralResult.referralCode;
+    }
+
     const customerName =
       [address.first_name, address.last_name].filter(Boolean).join(" ") ||
       profile.fullName ||
-      auth.user.email ||
+      profile.email ||
       "Customer";
     const order = await createCheckoutOrder({
       authUserId: auth.user.id,
-      customerEmail: auth.user.email ?? null,
+      customerEmail: profile.email ?? auth.user.email ?? null,
       customerId: profile.id,
       customerName,
       deliveryNotes: getRequiredString(body.deliveryNotes, 500),
       expectedCurrency: currency,
       expectedSubtotalCents: subtotalCents,
       lines,
-      referralCode: getRequiredString(body.referralCode, 40)
-        .replace(/[^\w-]/g, "")
-        .toUpperCase(),
+      referralCode,
       shippingAddressLine1: address.address_line1,
       shippingAddressLine2: address.address_line2 ?? "",
       shippingCity: address.city,
@@ -160,78 +239,49 @@ export async function POST(request: Request) {
       shippingRegion: address.region ?? "",
     });
 
-    const stripe = getStripe();
-    const stripeLineItems = lines.map((line) => {
+    const lineItems = lines.map((line) => {
       const product = productsById.get(line.productId)!;
 
       return {
-        price_data: {
-          currency: product.currency.toLowerCase(),
-          product_data: { name: product.name },
-          unit_amount: product.price_cents,
-        },
+        label: product.name,
+        priceCents: product.price_cents,
         quantity: line.quantity,
       };
     });
 
     if (order.shippingCents > 0) {
-      stripeLineItems.push({
-        price_data: {
-          currency: order.currency.toLowerCase(),
-          product_data: { name: "Shipping" },
-          unit_amount: order.shippingCents,
-        },
+      lineItems.push({
+        label: "Shipping",
+        priceCents: order.shippingCents,
         quantity: 1,
       });
     }
 
     const checkoutServerOrigin = getMobileCheckoutServerOrigin(request.url, getSiteUrl());
-    const successUrl = new URL("/checkout/mobile-return", checkoutServerOrigin);
-    successUrl.searchParams.set("outcome", "success");
-    successUrl.searchParams.set("order", order.orderNumber);
-    successUrl.searchParams.set("return_url", returnUrl.toString());
-    const cancelUrl = new URL("/checkout/mobile-return", checkoutServerOrigin);
-    cancelUrl.searchParams.set("outcome", "cancel");
-    cancelUrl.searchParams.set("order", order.orderNumber);
-    cancelUrl.searchParams.set("return_url", returnUrl.toString());
-    const session = await stripe.checkout.sessions.create({
-      customer_email: auth.user.email ?? undefined,
-      line_items: stripeLineItems,
-      metadata: {
-        order_id: order.id,
-        order_number: order.orderNumber,
-        source: "mobile",
-      },
-      mode: "payment",
-      payment_method_types: ["card"],
-      payment_intent_data: {
-        shipping: getStripeShippingDetails({
-          addressLine1: address.address_line1,
-          addressLine2: address.address_line2,
-          city: address.city,
-          country: address.country,
-          name: customerName,
-          phone: address.phone,
-          postalCode: address.postal_code,
-          region: address.region,
-        }),
-      },
-      success_url: `${successUrl.toString()}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl.toString(),
+    const redirectUrl = new URL("/checkout/mobile-return", checkoutServerOrigin);
+    redirectUrl.searchParams.set("order", order.orderNumber);
+    redirectUrl.searchParams.set("return_url", returnUrl.toString());
+    const payment = await createWonderPaymentLink({
+      callbackUrl: `${checkoutServerOrigin}/api/wonder/webhook`,
+      currency: order.currency,
+      lineItems,
+      note: `Harmony Lab mobile order ${order.orderNumber}`,
+      paymentMethod,
+      redirectUrl: redirectUrl.toString(),
+      referenceNumber: order.orderNumber,
+      totalCents: order.totalCents,
     });
 
-    if (!session.url) {
-      throw new Error("Stripe did not return a checkout URL.");
-    }
-
-    await setOrderCheckoutSession({
+    await setOrderWonderPayment({
       customerId: profile.id,
       orderId: order.id,
-      sessionId: session.id,
+      paymentLink: payment.paymentLink,
+      paymentMethod,
+      wonderOrderNumber: payment.order.number,
     });
 
     return mobileJson({
-      checkoutUrl: session.url,
+      checkoutUrl: payment.paymentLink,
       orderNumber: order.orderNumber,
     });
   } catch (error) {

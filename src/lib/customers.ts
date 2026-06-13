@@ -131,6 +131,7 @@ export async function getCurrentCustomer() {
 export async function ensureCustomerProfile(
   user: User,
   values?: {
+    email?: string;
     firstName?: string;
     fullName?: string;
     lastName?: string;
@@ -139,13 +140,14 @@ export async function ensureCustomerProfile(
   },
 ) {
   const supabase = createSupabaseServiceRoleClient();
-  const email = user.email ?? null;
   const firstName = values?.firstName ?? (typeof user.user_metadata?.first_name === "string" ? user.user_metadata.first_name : null);
   const lastName = values?.lastName ?? (typeof user.user_metadata?.last_name === "string" ? user.user_metadata.last_name : null);
   const fullName =
     values?.fullName ??
     getFullName(firstName, lastName, typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : null);
-  const phone = values?.phone ?? null;
+  const phone =
+    values?.phone ??
+    (typeof user.user_metadata?.phone === "string" ? user.user_metadata.phone : null);
   const hasReferralCode = Object.prototype.hasOwnProperty.call(values ?? {}, "referralCode");
 
   const { data: existingProfile, error: existingError } = await supabase
@@ -159,14 +161,16 @@ export async function ensureCustomerProfile(
   }
 
   if (existingProfile) {
+    const existingRow = existingProfile as CustomerProfileRow;
+    const email = values?.email ?? user.email ?? existingRow.email;
     const { data, error } = await supabase
       .from("customer_profiles")
       .update({
         email,
-        first_name: firstName ?? (existingProfile as CustomerProfileRow).first_name,
-        full_name: fullName ?? (existingProfile as CustomerProfileRow).full_name,
-        last_name: lastName ?? (existingProfile as CustomerProfileRow).last_name,
-        phone: phone ?? (existingProfile as CustomerProfileRow).phone,
+        first_name: firstName ?? existingRow.first_name,
+        full_name: fullName ?? existingRow.full_name,
+        last_name: lastName ?? existingRow.last_name,
+        phone: phone ?? existingRow.phone,
         ...(hasReferralCode ? { referral_code: values?.referralCode ?? null } : {}),
       })
       .eq("auth_user_id", user.id)
@@ -184,7 +188,7 @@ export async function ensureCustomerProfile(
     .from("customer_profiles")
     .insert({
       auth_user_id: user.id,
-      email,
+      email: values?.email ?? user.email ?? null,
       first_name: firstName,
       full_name: fullName,
       last_name: lastName,
@@ -249,7 +253,7 @@ export async function upsertDefaultCustomerAddress(
     country: string;
   },
 ) {
-  const supabase = await createSupabaseAuthServerClient();
+  const supabase = createSupabaseServiceRoleClient();
   const { data: existingAddress, error: existingError } = await supabase
     .from("customer_addresses")
     .select("id")

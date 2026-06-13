@@ -3,6 +3,7 @@ import { ensureCustomerProfile } from "@/lib/customers";
 import { getMobileUser, mobileJson, mobileOptions } from "@/lib/mobile-api";
 import { getStripe } from "@/lib/stripe";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { verifyAndCompleteWonderPayment } from "@/lib/wonder-payment";
 
 export function OPTIONS() {
   return mobileOptions();
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
     const supabase = createSupabaseServiceRoleClient();
     const { data: order, error } = await supabase
       .from("orders")
-      .select("id,order_number,payment_status,status,stripe_checkout_session_id")
+      .select("id,order_number,payment_provider,payment_status,status,stripe_checkout_session_id,wonder_order_number")
       .eq("order_number", orderNumber)
       .eq("customer_id", profile.id)
       .maybeSingle();
@@ -42,7 +43,16 @@ export async function GET(request: Request) {
     let paymentStatus = order.payment_status;
     let status = order.status;
 
-    if (order.stripe_checkout_session_id && paymentStatus !== "paid") {
+    if (
+      order.payment_provider === "wonder" &&
+      order.wonder_order_number &&
+      paymentStatus !== "paid"
+    ) {
+      if (await verifyAndCompleteWonderPayment(order.order_number)) {
+        paymentStatus = "paid";
+        status = "paid";
+      }
+    } else if (order.stripe_checkout_session_id && paymentStatus !== "paid") {
       const stripeSession = await getStripe().checkout.sessions.retrieve(
         order.stripe_checkout_session_id,
       );
@@ -69,4 +79,3 @@ export async function GET(request: Request) {
     return mobileJson({ error: "Unable to confirm payment status." }, { status: 500 });
   }
 }
-

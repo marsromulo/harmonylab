@@ -2,11 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { setOrderCheckoutSession } from "@/lib/checkout";
+import { setOrderWonderPayment } from "@/lib/checkout";
+import { normalizeEmail, normalizeHongKongPhone } from "@/lib/customer-fields";
 import { ensureCustomerProfile } from "@/lib/customers";
 import { getValidatedWebsiteReferralCode } from "@/lib/referrals";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
-import { getSiteUrl, getStripe, getStripeShippingDetails } from "@/lib/stripe";
+import {
+  createWonderPaymentLink,
+  getSiteUrl,
+  type WonderPaymentMethod,
+} from "@/lib/wonder";
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -27,6 +32,14 @@ function getRedirectUrl(path: string, key: "error" | "success", value: string) {
   return `${path}?${key}=${encodeURIComponent(value)}`;
 }
 
+function getWonderPaymentMethod(value: string | null): WonderPaymentMethod {
+  if (value === "alipay_hk" || value === "fps") {
+    return value;
+  }
+
+  return "credit_card";
+}
+
 const supportedShippingCountries = new Set(["Hong Kong"]);
 
 function getShippingCountry(value: string) {
@@ -40,6 +53,7 @@ type PayableOrderRow = {
   customer_email: string | null;
   currency: string;
   payment_status: string;
+  payment_method: WonderPaymentMethod | null;
   shipping_address_line1: string | null;
   shipping_address_line2: string | null;
   shipping_city: string | null;
@@ -48,6 +62,9 @@ type PayableOrderRow = {
   shipping_postal_code: string | null;
   shipping_region: string | null;
   status: string;
+  total_cents: number;
+  wonder_payment_link: string | null;
+  wonder_order_number: string | null;
 };
 
 type PayableOrderItemRow = {
@@ -70,7 +87,7 @@ function getAddressPayload(formData: FormData) {
     label: getString(formData, "label") || null,
     first_name: firstName,
     last_name: lastName,
-    phone: getString(formData, "phone") || null,
+    phone: normalizeHongKongPhone(getString(formData, "phone")) || null,
     address_line1: addressLine1,
     address_line2: getString(formData, "address_line2") || null,
     city,
@@ -109,13 +126,13 @@ export async function registerCustomerAction(formData: FormData) {
   const redirectPath = getRedirectPath(formData);
   const firstName = getString(formData, "first_name");
   const lastName = getString(formData, "last_name");
-  const email = getString(formData, "email");
+  const email = normalizeEmail(getString(formData, "email"));
   const password = getString(formData, "password");
   const passwordConfirmation = getString(formData, "password_confirmation");
-  const phone = getString(formData, "phone");
+  const phone = normalizeHongKongPhone(getString(formData, "phone"));
   const fullName = [firstName, lastName].filter(Boolean).join(" ");
 
-  if (!firstName || !lastName || !email || password.length < 8) {
+  if (!firstName || !lastName || !email || password.length < 6) {
     redirect(getRedirectUrl(redirectPath, "error", "register-invalid"));
   }
 
@@ -282,7 +299,7 @@ export async function payPendingOrderAction(orderId: string) {
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .select(
-      "id,order_number,customer_name,customer_email,currency,payment_status,shipping_address_line1,shipping_address_line2,shipping_city,shipping_cents,shipping_country,shipping_postal_code,shipping_region,status",
+      "id,order_number,customer_name,customer_email,currency,payment_method,payment_status,shipping_address_line1,shipping_address_line2,shipping_city,shipping_cents,shipping_country,shipping_postal_code,shipping_region,status,total_cents,wonder_order_number,wonder_payment_link",
     )
     .eq("id", orderId)
     .eq("customer_id", profile.id)
@@ -302,6 +319,10 @@ export async function payPendingOrderAction(orderId: string) {
     redirect("/account?error=payment-order-not-payable");
   }
 
+  if (orderRow.wonder_order_number && orderRow.wonder_payment_link) {
+    redirect(orderRow.wonder_payment_link);
+  }
+
   const { data: items, error: itemError } = await supabase
     .from("order_items")
     .select("product_name,quantity,unit_price_cents")
@@ -311,70 +332,44 @@ export async function payPendingOrderAction(orderId: string) {
     redirect("/account?error=payment-order-not-payable");
   }
 
-  const stripe = getStripe();
   const siteUrl = getSiteUrl();
-  const stripeLineItems = ((items ?? []) as unknown as PayableOrderItemRow[]).map((item) => ({
-    price_data: {
-      currency: orderRow.currency.toLowerCase(),
-      product_data: {
-        name: item.product_name,
-      },
-      unit_amount: item.unit_price_cents,
-    },
+  const paymentMethod = getWonderPaymentMethod(orderRow.payment_method);
+  const lineItems = ((items ?? []) as unknown as PayableOrderItemRow[]).map((item) => ({
+    label: item.product_name,
+    priceCents: item.unit_price_cents,
     quantity: item.quantity,
   }));
 
   if (orderRow.shipping_cents > 0) {
-    stripeLineItems.push({
-      price_data: {
-        currency: orderRow.currency.toLowerCase(),
-        product_data: {
-          name: "Shipping",
-        },
-        unit_amount: orderRow.shipping_cents,
-      },
+    lineItems.push({
+      label: "Shipping",
+      priceCents: orderRow.shipping_cents,
       quantity: 1,
     });
   }
 
-  const session = await stripe.checkout.sessions.create({
-    customer_email: orderRow.customer_email ?? profile.email ?? undefined,
-    line_items: stripeLineItems,
-    metadata: {
-      order_id: orderRow.id,
-      order_number: orderRow.order_number,
-    },
-    mode: "payment",
-    payment_method_types: ["card"],
-    payment_intent_data: {
-      shipping: getStripeShippingDetails({
-        addressLine1: orderRow.shipping_address_line1,
-        addressLine2: orderRow.shipping_address_line2,
-        city: orderRow.shipping_city,
-        country: orderRow.shipping_country,
-        name: orderRow.customer_name ?? profile.fullName ?? profile.email,
-        phone: profile.phone,
-        postalCode: orderRow.shipping_postal_code,
-        region: orderRow.shipping_region,
-      }),
-    },
-    success_url: `${siteUrl}/checkout/success?order=${encodeURIComponent(orderRow.order_number)}&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${siteUrl}/account?error=payment-cancelled`,
+  const payment = await createWonderPaymentLink({
+    callbackUrl: `${siteUrl}/api/wonder/webhook`,
+    currency: orderRow.currency,
+    lineItems,
+    note: `Harmony Lab order ${orderRow.order_number}`,
+    paymentMethod,
+    redirectUrl: `${siteUrl}/checkout/complete?order=${encodeURIComponent(orderRow.order_number)}&return_to=account`,
+    referenceNumber: orderRow.order_number,
+    totalCents: orderRow.total_cents,
   });
 
-  if (!session.url) {
-    throw new Error("Unable to create Stripe checkout session.");
-  }
-
   try {
-    await setOrderCheckoutSession({
+    await setOrderWonderPayment({
       customerId: profile.id,
       orderId: orderRow.id,
-      sessionId: session.id,
+      paymentLink: payment.paymentLink,
+      paymentMethod,
+      wonderOrderNumber: payment.order.number,
     });
   } catch {
     redirect("/account?error=payment-session-failed");
   }
 
-  redirect(session.url);
+  redirect(payment.paymentLink);
 }

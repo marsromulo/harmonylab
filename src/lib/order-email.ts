@@ -275,14 +275,17 @@ function buildCustomerMessage(data: OrderEmailData): EmailMessage {
   };
 }
 
-async function loadOrderEmailData(checkoutSessionId: string): Promise<OrderEmailData> {
+async function loadOrderEmailDataByColumn(
+  column: "id" | "stripe_checkout_session_id",
+  value: string,
+): Promise<OrderEmailData> {
   const supabase = createSupabaseServiceRoleClient();
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .select(
       "id,order_number,customer_email,customer_name,currency,delivery_notes,discount_cents,paid_at,referral_code_entered,shipping_address_line1,shipping_address_line2,shipping_city,shipping_country,shipping_cents,shipping_postal_code,shipping_region,subtotal_cents,total_cents",
     )
-    .eq("stripe_checkout_session_id", checkoutSessionId)
+    .eq(column, value)
     .maybeSingle();
 
   if (orderError || !order) {
@@ -386,7 +389,16 @@ async function sendClaimedEmail({
 }
 
 export async function sendPaidOrderEmails(checkoutSessionId: string) {
-  const data = await loadOrderEmailData(checkoutSessionId);
+  const data = await loadOrderEmailDataByColumn("stripe_checkout_session_id", checkoutSessionId);
+  await sendPaidOrderEmailData(data);
+}
+
+export async function sendPaidOrderEmailsForOrder(orderId: string) {
+  const data = await loadOrderEmailDataByColumn("id", orderId);
+  await sendPaidOrderEmailData(data);
+}
+
+async function sendPaidOrderEmailData(data: OrderEmailData) {
   const adminEmail = process.env.ADMIN_ORDER_EMAIL?.trim() || "harmonylabhk@gmail.com";
   const deliveries: Promise<void>[] = [
     sendClaimedEmail({

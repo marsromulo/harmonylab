@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CustomerAddress, CustomerProfile } from "@/lib/customers";
+import { getHongKongPhoneLocalNumber } from "@/lib/customer-fields";
 
 const regionOptions = ["Hong Kong", "Kowloon", "New Territories"];
 const countryOptions = ["Hong Kong", "Philippines"];
@@ -12,24 +13,96 @@ function getAddressLabel(address: CustomerAddress) {
 
 export function CheckoutAddressFields({
   addresses,
+  isGuest,
   profile,
 }: {
   addresses: CustomerAddress[];
+  isGuest: boolean;
   profile: CustomerProfile | null;
 }) {
   const defaultAddressId = addresses.find((address) => address.isDefault)?.id ?? addresses[0]?.id ?? "";
   const [selectedAddressId, setSelectedAddressId] = useState(defaultAddressId);
+  const [guestHydrated, setGuestHydrated] = useState(!isGuest);
   const selectedAddress = useMemo(
     () => addresses.find((address) => address.id === selectedAddressId) ?? null,
     [addresses, selectedAddressId],
   );
+  const [values, setValues] = useState({
+    email: profile?.email ?? "",
+    firstName: selectedAddress?.firstName ?? profile?.firstName ?? "",
+    lastName: selectedAddress?.lastName ?? profile?.lastName ?? "",
+    phone: getHongKongPhoneLocalNumber(selectedAddress?.phone ?? profile?.phone),
+    addressLine1: selectedAddress?.addressLine1 ?? "",
+    addressLine2: selectedAddress?.addressLine2 ?? "",
+    city: selectedAddress?.city ?? "",
+    region: selectedAddress?.region ?? "Hong Kong",
+    postalCode: selectedAddress?.postalCode ?? "",
+    country: selectedAddress?.country ?? "Hong Kong",
+  });
+
+  useEffect(() => {
+    if (!isGuest) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      try {
+        const stored = window.localStorage.getItem("harmonylab-guest-checkout-v1");
+
+        if (stored) {
+          setValues((current) => ({
+            ...current,
+            ...(JSON.parse(stored) as Partial<typeof current>),
+          }));
+        }
+      } catch {
+        // Ignore unavailable or invalid browser storage.
+      } finally {
+        setGuestHydrated(true);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [isGuest]);
+
+  useEffect(() => {
+    if (!isGuest || !guestHydrated) {
+      return;
+    }
+
+    window.localStorage.setItem("harmonylab-guest-checkout-v1", JSON.stringify(values));
+  }, [guestHydrated, isGuest, values]);
+
+  function updateValue(key: keyof typeof values, value: string) {
+    setValues((current) => ({ ...current, [key]: value }));
+  }
+
+  function selectAddress(addressId: string) {
+    setSelectedAddressId(addressId);
+    const address = addresses.find((candidate) => candidate.id === addressId);
+
+    if (address) {
+      setValues((current) => ({
+        ...current,
+        firstName: address.firstName ?? profile?.firstName ?? "",
+        lastName: address.lastName ?? profile?.lastName ?? "",
+        phone: getHongKongPhoneLocalNumber(address.phone ?? profile?.phone),
+        addressLine1: address.addressLine1,
+        addressLine2: address.addressLine2 ?? "",
+        city: address.city,
+        region: address.region ?? "Hong Kong",
+        postalCode: address.postalCode ?? "",
+        country: address.country,
+      }));
+    }
+  }
 
   return (
-    <div className="checkout-address-fields" key={selectedAddressId || "new-address"}>
+    <div className="checkout-address-fields">
       {addresses.length > 0 ? (
         <label>
           Use saved address
-          <select name="customer_address_id" value={selectedAddressId} onChange={(event) => setSelectedAddressId(event.target.value)}>
+          <select name="customer_address_id" value={selectedAddressId} onChange={(event) => selectAddress(event.target.value)}>
             {addresses.map((address) => (
               <option key={address.id} value={address.id}>
                 {address.isDefault ? "Default - " : ""}
@@ -43,19 +116,57 @@ export function CheckoutAddressFields({
         <input name="customer_address_id" type="hidden" value="" />
       )}
 
+      {isGuest ? (
+        <label>
+          Email
+          <input
+            autoComplete="email"
+            name="email"
+            onChange={(event) => updateValue("email", event.target.value)}
+            required
+            type="email"
+            value={values.email}
+          />
+        </label>
+      ) : null}
       <div className="account-form-split">
         <label>
           First name
-          <input name="first_name" required defaultValue={selectedAddress?.firstName ?? profile?.firstName ?? ""} />
+          <input
+            autoComplete="given-name"
+            name="first_name"
+            onChange={(event) => updateValue("firstName", event.target.value)}
+            required
+            value={values.firstName}
+          />
         </label>
         <label>
           Last name
-          <input name="last_name" required defaultValue={selectedAddress?.lastName ?? profile?.lastName ?? ""} />
+          <input
+            autoComplete="family-name"
+            name="last_name"
+            onChange={(event) => updateValue("lastName", event.target.value)}
+            required
+            value={values.lastName}
+          />
         </label>
       </div>
       <label>
         Phone
-        <input name="phone" type="tel" defaultValue={selectedAddress?.phone ?? profile?.phone ?? ""} />
+        <span className="phone-prefix-field">
+          <b>+852</b>
+          <input
+            autoComplete="tel-national"
+            inputMode="numeric"
+            maxLength={8}
+            name="phone"
+            onChange={(event) => updateValue("phone", event.target.value.replace(/\D/g, "").slice(0, 8))}
+            pattern="[0-9]{8}"
+            required={isGuest}
+            type="tel"
+            value={values.phone}
+          />
+        </span>
       </label>
       <label>
         Shipping address
@@ -63,21 +174,35 @@ export function CheckoutAddressFields({
           name="shipping_address_line1"
           required
           placeholder="Street address, building, flat"
-          defaultValue={selectedAddress?.addressLine1 ?? ""}
+          autoComplete="address-line1"
+          onChange={(event) => updateValue("addressLine1", event.target.value)}
+          value={values.addressLine1}
         />
       </label>
       <label>
         Address line 2
-        <input name="shipping_address_line2" placeholder="Optional" defaultValue={selectedAddress?.addressLine2 ?? ""} />
+        <input
+          autoComplete="address-line2"
+          name="shipping_address_line2"
+          onChange={(event) => updateValue("addressLine2", event.target.value)}
+          placeholder="Optional"
+          value={values.addressLine2}
+        />
       </label>
       <div className="account-form-split">
         <label>
           District / City
-          <input name="shipping_city" required defaultValue={selectedAddress?.city ?? ""} />
+          <input
+            autoComplete="address-level2"
+            name="shipping_city"
+            onChange={(event) => updateValue("city", event.target.value)}
+            required
+            value={values.city}
+          />
         </label>
         <label>
           Region
-          <select name="shipping_region" defaultValue={selectedAddress?.region ?? "Hong Kong"}>
+          <select name="shipping_region" value={values.region} onChange={(event) => updateValue("region", event.target.value)}>
             {regionOptions.map((region) => (
               <option key={region} value={region}>
                 {region}
@@ -89,11 +214,17 @@ export function CheckoutAddressFields({
       <div className="account-form-split">
         <label>
           Postal code
-          <input name="shipping_postal_code" placeholder="Optional" defaultValue={selectedAddress?.postalCode ?? ""} />
+          <input
+            autoComplete="postal-code"
+            name="shipping_postal_code"
+            onChange={(event) => updateValue("postalCode", event.target.value)}
+            placeholder="Optional"
+            value={values.postalCode}
+          />
         </label>
         <label>
           Country
-          <select name="shipping_country" required defaultValue="Hong Kong">
+          <select name="shipping_country" required value={values.country} onChange={(event) => updateValue("country", event.target.value)}>
             {countryOptions.map((country) => (
               <option key={country} value={country} disabled={country === "Philippines"}>
                 {country}

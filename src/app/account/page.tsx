@@ -12,7 +12,16 @@ import {
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getCurrentCustomer, getCustomerAddresses, type CustomerAddress } from "@/lib/customers";
-import { formatOrderDate, formatOrderMoney, getCustomerOrders, getOrderStatusLabel } from "@/lib/orders";
+import {
+  formatCustomerPaymentReference,
+  formatOrderDate,
+  formatOrderMoney,
+  getCustomerOrders,
+  getOrderStatusLabel,
+  getPaymentMethodLabel,
+  getPaymentProviderLabel,
+} from "@/lib/orders";
+import { getHongKongPhoneLocalNumber } from "@/lib/customer-fields";
 
 type AccountPageProps = {
   searchParams: Promise<{
@@ -25,7 +34,7 @@ const errorMessages: Record<string, string> = {
   "login-failed": "We could not sign you in with those details.",
   "login-invalid": "Please enter your email and password.",
   "register-failed": "We could not create this account. Try again or sign in.",
-  "register-invalid": "Please enter your first name, last name, email, and a password with at least 8 characters.",
+  "register-invalid": "Please enter your first name, last name, email, and a password with at least 6 characters.",
   "register-password-mismatch": "Please make sure both password fields match.",
   "address-delete-failed": "We could not delete that address.",
   "address-invalid": "Please enter first name, last name, shipping address, and city.",
@@ -66,7 +75,17 @@ function AddressFields({ address, profile }: { address?: CustomerAddress; profil
       </div>
       <label>
         Phone
-        <input name="phone" type="tel" defaultValue={address?.phone ?? profile?.phone ?? ""} />
+        <span className="phone-prefix-field">
+          <b>+852</b>
+          <input
+            inputMode="numeric"
+            maxLength={8}
+            name="phone"
+            pattern="[0-9]{8}"
+            type="tel"
+            defaultValue={getHongKongPhoneLocalNumber(address?.phone ?? profile?.phone)}
+          />
+        </span>
       </label>
       <label>
         Shipping address
@@ -241,6 +260,24 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                           </form>
                         ) : null}
                       </div>
+                      <dl className="account-order-payment">
+                        <div>
+                          <dt>Payment</dt>
+                          <dd>{getPaymentMethodLabel(order.paymentMethod)}</dd>
+                        </div>
+                        <div>
+                          <dt>Provider</dt>
+                          <dd>{getPaymentProviderLabel(order.paymentProvider)}</dd>
+                        </div>
+                        <div>
+                          <dt>Invoice reference</dt>
+                          <dd>{order.wonderOrderNumber ?? order.orderNumber}</dd>
+                        </div>
+                        <div>
+                          <dt>Transaction reference</dt>
+                          <dd>{formatCustomerPaymentReference(order.wonderTransactionId)}</dd>
+                        </div>
+                      </dl>
                     </article>
                   ))}
                 </div>
@@ -282,15 +319,18 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
               </label>
               <label>
                 Phone
-                <input name="phone" type="tel" />
+                <span className="phone-prefix-field">
+                  <b>+852</b>
+                  <input inputMode="numeric" maxLength={8} name="phone" pattern="[0-9]{8}" type="tel" />
+                </span>
               </label>
               <label>
                 Password
-                <input minLength={8} name="password" type="password" required />
+                <input minLength={6} name="password" type="password" required />
               </label>
               <label>
                 Confirm password
-                <input minLength={8} name="password_confirmation" type="password" required />
+                <input minLength={6} name="password_confirmation" type="password" required />
               </label>
               <button type="submit">REGISTER</button>
             </form>

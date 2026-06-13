@@ -195,3 +195,29 @@ export async function notifyCustomerOrderPaid(checkoutSessionId: string) {
     type: "order_created",
   });
 }
+
+export async function notifyCustomerOrderPaidForOrder(orderId: string) {
+  const supabase = createSupabaseServiceRoleClient();
+  const { data: order, error } = await supabase
+    .from("orders")
+    .select("id,customer_id,order_number")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error || !order?.customer_id) {
+    if (error) {
+      throw new Error(`Unable to load paid order for notification: ${error.message}`);
+    }
+    return;
+  }
+
+  await createAndSendCustomerNotification({
+    body: `Payment for order ${order.order_number} was successful. Tap to view the order.`,
+    customerId: order.customer_id,
+    notificationKey: `order-paid:${order.id}`,
+    orderId: order.id,
+    orderNumber: order.order_number,
+    title: "Order confirmed",
+    type: "order_created",
+  });
+}

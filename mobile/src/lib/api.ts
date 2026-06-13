@@ -81,6 +81,8 @@ export type MobileOrderDetails = Omit<MobileOrder, 'order_items'> & {
     unit_price_cents: number;
   }[];
   paid_at: string | null;
+  payment_method: string | null;
+  payment_provider: string | null;
   shipped_at: string | null;
   shipping_address_line1: string | null;
   shipping_address_line2: string | null;
@@ -90,6 +92,8 @@ export type MobileOrderDetails = Omit<MobileOrder, 'order_items'> & {
   shipping_postal_code: string | null;
   shipping_region: string | null;
   subtotal_cents: number;
+  wonder_order_number: string | null;
+  wonder_transaction_id: string | null;
 };
 
 export type MobileNotification = {
@@ -111,9 +115,11 @@ export type MobileAccount = {
   addresses: MobileAddress[];
   orders: MobileOrder[];
   profile: {
+    email: string | null;
     firstName: string | null;
     fullName: string | null;
     lastName: string | null;
+    phone: string | null;
     referralId: string | null;
     referralPointsBalance: number;
   };

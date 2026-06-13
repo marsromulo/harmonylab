@@ -17,7 +17,10 @@ export type StoreOrder = {
   fulfillmentTrackingUrl: string | null;
   paidAt: string | null;
   paymentMethod: string | null;
+  paymentProvider: string | null;
   paymentStatus: string;
+  wonderOrderNumber: string | null;
+  wonderTransactionId: string | null;
   subtotalCents: number;
   shippingCents: number;
   discountCents: number;
@@ -70,6 +73,7 @@ type StoreOrderRow = {
   fulfillment_tracking_url?: string | null;
   paid_at: string | null;
   payment_method: string | null;
+  payment_provider: string | null;
   payment_status: string;
   subtotal_cents: number;
   shipping_cents: number;
@@ -89,6 +93,8 @@ type StoreOrderRow = {
   shipped_at?: string | null;
   created_at: string;
   updated_at: string;
+  wonder_order_number: string | null;
+  wonder_transaction_id: string | null;
 };
 
 type StoreOrderItemRow = {
@@ -135,7 +141,10 @@ const baseOrderColumns = [
   "currency",
   "paid_at",
   "payment_method",
+  "payment_provider",
   "payment_status",
+  "wonder_order_number",
+  "wonder_transaction_id",
   "subtotal_cents",
   "shipping_cents",
   "discount_cents",
@@ -193,7 +202,10 @@ function mapOrder(row: StoreOrderRow): StoreOrder {
     fulfillmentTrackingUrl: row.fulfillment_tracking_url ?? null,
     paidAt: row.paid_at,
     paymentMethod: row.payment_method,
+    paymentProvider: row.payment_provider,
     paymentStatus: row.payment_status,
+    wonderOrderNumber: row.wonder_order_number,
+    wonderTransactionId: row.wonder_transaction_id,
     subtotalCents: row.subtotal_cents,
     shippingCents: row.shipping_cents,
     discountCents: row.discount_cents,
@@ -271,6 +283,42 @@ export function formatOrderDate(value: string) {
 
 export function getOrderStatusLabel(status: OrderStatus) {
   return statusLabels[status];
+}
+
+export function getPaymentMethodLabel(method: string | null) {
+  if (method === "credit_card") {
+    return "Credit Card";
+  }
+
+  if (method === "alipay_hk" || method === "alipayhk") {
+    return "AlipayHK";
+  }
+
+  if (method === "fps") {
+    return "FPS";
+  }
+
+  return method || "Not selected";
+}
+
+export function getPaymentProviderLabel(provider: string | null) {
+  if (provider === "wonder") {
+    return "Wonder";
+  }
+
+  if (provider === "stripe") {
+    return "Stripe";
+  }
+
+  return provider || "Not available";
+}
+
+export function formatCustomerPaymentReference(value: string | null) {
+  if (!value) {
+    return "Pending";
+  }
+
+  return value.length > 12 ? `${value.slice(0, 8)}...${value.slice(-4)}` : value;
 }
 
 export async function getAdminOrders(limit = 100) {

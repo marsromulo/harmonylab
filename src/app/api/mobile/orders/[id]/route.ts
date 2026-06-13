@@ -24,7 +24,7 @@ export async function GET(
     const { data, error } = await supabase
       .from("orders")
       .select(
-        "id,order_number,status,payment_status,currency,subtotal_cents,shipping_cents,discount_cents,total_cents,created_at,paid_at,delivery_notes,shipping_address_line1,shipping_address_line2,shipping_city,shipping_region,shipping_postal_code,shipping_country,fulfillment_carrier,fulfillment_tracking_number,fulfillment_tracking_url,shipped_at,delivered_at,order_items(id,product_name,quantity,unit_price_cents,line_total_cents)",
+        "id,order_number,status,payment_method,payment_provider,payment_status,wonder_order_number,wonder_transaction_id,currency,subtotal_cents,shipping_cents,discount_cents,total_cents,created_at,paid_at,delivery_notes,shipping_address_line1,shipping_address_line2,shipping_city,shipping_region,shipping_postal_code,shipping_country,fulfillment_carrier,fulfillment_tracking_number,fulfillment_tracking_url,shipped_at,delivered_at,order_items(id,product_name,quantity,unit_price_cents,line_total_cents)",
       )
       .eq("id", id)
       .eq("customer_id", profile.id)

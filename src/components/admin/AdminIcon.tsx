@@ -36,6 +36,15 @@ export function AdminIcon({ name }: { name: string }) {
     );
   }
 
+  if (name === "discount") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M20 13 13 20a2 2 0 0 1-3 0l-6-6a2 2 0 0 1 0-3l7-7h7a2 2 0 0 1 2 2v7Z" />
+        <circle cx="15.5" cy="8.5" r="1.5" />
+      </svg>
+    );
+  }
+
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <rect x="3" y="3" width="7" height="7" rx="1" />

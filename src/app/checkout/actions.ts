@@ -2,11 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { getCartSummary } from "@/lib/cart";
-import { createCheckoutOrder, setOrderCheckoutSession } from "@/lib/checkout";
+import { createCheckoutOrder, setOrderWonderPayment } from "@/lib/checkout";
+import { normalizeEmail, normalizeHongKongPhone } from "@/lib/customer-fields";
 import { ensureCustomerProfile, upsertDefaultCustomerAddress } from "@/lib/customers";
 import { validateMemberReferralCode } from "@/lib/referrals";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
-import { getSiteUrl, getStripe, getStripeShippingDetails } from "@/lib/stripe";
+import { createWonderPaymentLink, getSiteUrl } from "@/lib/wonder";
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -14,7 +15,11 @@ function getString(formData: FormData, key: string) {
 }
 
 function getPaymentMethod(value: string) {
-  return value === "alipay_hk" ? "alipay_hk" : "credit_card";
+  if (value === "alipay_hk" || value === "fps") {
+    return value;
+  }
+
+  return "credit_card";
 }
 
 const supportedShippingCountries = new Set(["Hong Kong"]);
@@ -31,19 +36,36 @@ export async function createCheckoutOrderAction(formData: FormData) {
   }
 
   const supabase = await createSupabaseAuthServerClient();
-  const {
+  let {
     data: { user },
   } = await supabase.auth.getUser();
+  const checkoutMode = getString(formData, "checkout_mode");
+
+  if (!user && checkoutMode === "guest") {
+    const { data, error } = await supabase.auth.signInAnonymously({
+      options: {
+        data: { checkout_type: "guest" },
+      },
+    });
+
+    if (error || !data.user) {
+      redirect("/checkout?error=guest-unavailable");
+    }
+
+    user = data.user;
+  }
 
   if (!user) {
-    redirect("/account?error=login-invalid");
+    redirect("/checkout?error=login-invalid");
   }
 
   const firstName = getString(formData, "first_name");
   const lastName = getString(formData, "last_name");
   const fullName = [firstName, lastName].filter(Boolean).join(" ");
-  const phone = getString(formData, "phone");
-  const email = user.email;
+  const phone = normalizeHongKongPhone(getString(formData, "phone"));
+  const email = user.is_anonymous
+    ? normalizeEmail(getString(formData, "email"))
+    : user.email ?? "";
   const shippingAddressLine1 = getString(formData, "shipping_address_line1");
   const shippingAddressLine2 = getString(formData, "shipping_address_line2");
   const shippingCity = getString(formData, "shipping_city");
@@ -55,12 +77,14 @@ export async function createCheckoutOrderAction(formData: FormData) {
   const paymentMethod = getPaymentMethod(getString(formData, "payment_method"));
   const enteredReferralCode = getString(formData, "referral_code");
 
-  if (!firstName || !lastName || !shippingAddressLine1 || !shippingCity) {
+  if (
+    !firstName ||
+    !lastName ||
+    !shippingAddressLine1 ||
+    !shippingCity ||
+    (user.is_anonymous && (!email || !phone))
+  ) {
     redirect("/checkout?error=shipping-invalid");
-  }
-
-  if (paymentMethod === "alipay_hk") {
-    redirect("/checkout?error=payment-unavailable");
   }
 
   let referralCode = "";
@@ -76,6 +100,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
   }
 
   const customer = await ensureCustomerProfile(user, {
+    email,
     firstName,
     fullName,
     lastName,
@@ -132,7 +157,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
   const currency = cart.lines[0]?.product.currency ?? "HKD";
   const order = await createCheckoutOrder({
     authUserId: user.id,
-    customerEmail: email ?? null,
+    customerEmail: email || null,
     customerId: customer.id,
     customerName: fullName || customer.fullName || user.email || "Customer",
     deliveryNotes,
@@ -151,66 +176,39 @@ export async function createCheckoutOrderAction(formData: FormData) {
     shippingRegion,
   });
 
-  const stripe = getStripe();
   const siteUrl = getSiteUrl();
-  const stripeLineItems = cart.lines.map((line) => ({
-    price_data: {
-      currency: line.product.currency.toLowerCase(),
-      product_data: {
-        name: line.product.name,
-      },
-      unit_amount: line.product.priceCents,
-    },
+  const lineItems = cart.lines.map((line) => ({
+    label: line.product.name,
+    priceCents: line.product.priceCents,
     quantity: line.quantity,
   }));
 
   if (order.shippingCents > 0) {
-    stripeLineItems.push({
-      price_data: {
-        currency: order.currency.toLowerCase(),
-        product_data: {
-          name: "Shipping",
-        },
-        unit_amount: order.shippingCents,
-      },
+    lineItems.push({
+      label: "Shipping",
+      priceCents: order.shippingCents,
       quantity: 1,
     });
   }
 
-  const session = await stripe.checkout.sessions.create({
-    customer_email: email ?? undefined,
-    line_items: stripeLineItems,
-    metadata: {
-      order_id: order.id,
-      order_number: order.orderNumber,
-    },
-    mode: "payment",
-    payment_method_types: ["card"],
-    payment_intent_data: {
-      shipping: getStripeShippingDetails({
-        addressLine1: shippingAddressLine1,
-        addressLine2: shippingAddressLine2,
-        city: shippingCity,
-        country: shippingCountry,
-        name: fullName || customer.fullName || user.email,
-        phone,
-        postalCode: shippingPostalCode,
-        region: shippingRegion,
-      }),
-    },
-    success_url: `${siteUrl}/checkout/complete?order=${encodeURIComponent(order.orderNumber)}&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${siteUrl}/checkout?error=payment-cancelled`,
+  const payment = await createWonderPaymentLink({
+    callbackUrl: `${siteUrl}/api/wonder/webhook`,
+    currency: order.currency,
+    lineItems,
+    note: `Harmony Lab order ${order.orderNumber}`,
+    paymentMethod,
+    redirectUrl: `${siteUrl}/checkout/complete?order=${encodeURIComponent(order.orderNumber)}`,
+    referenceNumber: order.orderNumber,
+    totalCents: order.totalCents,
   });
 
-  if (!session.url) {
-    throw new Error("Unable to create Stripe checkout session.");
-  }
-
-  await setOrderCheckoutSession({
+  await setOrderWonderPayment({
     customerId: customer.id,
     orderId: order.id,
-    sessionId: session.id,
+    paymentLink: payment.paymentLink,
+    paymentMethod,
+    wonderOrderNumber: payment.order.number,
   });
 
-  redirect(session.url);
+  redirect(payment.paymentLink);
 }
