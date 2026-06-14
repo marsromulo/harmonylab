@@ -1,6 +1,9 @@
 import { markWonderOrderPaid } from "@/lib/checkout";
 import { sendPaidOrderEmailsForOrder } from "@/lib/order-email";
-import { notifyCustomerOrderPaidForOrder } from "@/lib/push-notifications";
+import {
+  notifyAdminsOrderPaidForOrder,
+  notifyCustomerOrderPaidForOrder,
+} from "@/lib/push-notifications";
 import { getWonderOrder, type WonderOrder } from "@/lib/wonder";
 
 export async function completeWonderPayment(wonderOrder: WonderOrder) {
@@ -12,6 +15,7 @@ export async function completeWonderPayment(wonderOrder: WonderOrder) {
 
   const results = await Promise.allSettled([
     sendPaidOrderEmailsForOrder(orderId),
+    notifyAdminsOrderPaidForOrder(orderId),
     notifyCustomerOrderPaidForOrder(orderId),
   ]);
 

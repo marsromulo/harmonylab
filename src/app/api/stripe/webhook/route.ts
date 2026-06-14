@@ -1,7 +1,10 @@
 import type Stripe from "stripe";
 import { markCheckoutOrderPaid } from "@/lib/checkout";
 import { sendPaidOrderEmails } from "@/lib/order-email";
-import { notifyCustomerOrderPaid } from "@/lib/push-notifications";
+import {
+  notifyAdminsOrderPaid,
+  notifyCustomerOrderPaid,
+} from "@/lib/push-notifications";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe";
 
@@ -33,7 +36,10 @@ export async function POST(request: Request) {
       try {
         await markCheckoutOrderPaid(session);
         await sendPaidOrderEmails(session.id);
-        await notifyCustomerOrderPaid(session.id);
+        await Promise.all([
+          notifyAdminsOrderPaid(session.id),
+          notifyCustomerOrderPaid(session.id),
+        ]);
       } catch (error) {
         const message =
           error instanceof Error

@@ -128,6 +128,7 @@ export type MobileNotification = {
 
 export type MobileAccount = {
   addresses: MobileAddress[];
+  isAdmin: boolean;
   orders: MobileOrder[];
   profile: {
     email: string | null;
@@ -138,6 +139,52 @@ export type MobileAccount = {
     referralId: string | null;
     referralPointsBalance: number;
   };
+};
+
+export type MobileAdminOrder = {
+  created_at: string;
+  currency: string;
+  customer_email: string | null;
+  customer_name: string | null;
+  id: string;
+  order_number: string;
+  payment_status: string;
+  referral_code_entered: string | null;
+  referral_payout_status: 'paid' | 'unpaid';
+  referral_points_awarded: number;
+  status: string;
+  total_cents: number;
+};
+
+export type MobileAdminOrderDetails = MobileAdminOrder & {
+  customer_id: string | null;
+  delivered_at: string | null;
+  delivery_notes: string | null;
+  discount_cents: number;
+  fulfillment_carrier: string | null;
+  fulfillment_notes: string | null;
+  fulfillment_tracking_number: string | null;
+  fulfillment_tracking_url: string | null;
+  order_items: {
+    id: string;
+    line_total_cents: number;
+    product_name: string;
+    quantity: number;
+    unit_price_cents: number;
+  }[];
+  paid_at: string | null;
+  payment_method: string | null;
+  payment_provider: string | null;
+  shipped_at: string | null;
+  shipping_address_line1: string | null;
+  shipping_address_line2: string | null;
+  shipping_city: string | null;
+  shipping_country: string | null;
+  shipping_region: string | null;
+  shipping_cents: number;
+  subtotal_cents: number;
+  wonder_order_number: string | null;
+  wonder_transaction_id: string | null;
 };
 
 export async function apiRequest<T>(

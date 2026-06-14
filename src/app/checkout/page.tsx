@@ -33,6 +33,7 @@ const errorMessages: Record<string, string> = {
   "guest-unavailable": "Guest checkout is not enabled yet. Please sign in or create an account.",
   "payment-cancelled": "Payment was cancelled. You can review your checkout and try again.",
   "payment-unavailable": "That payment method is not available. Please choose another option.",
+  "email-required": "Email address is required.",
   "referral-invalid": "That referral code was not found. Contact your referrer for the correct code or leave it blank.",
   "shipping-invalid": "Please enter your name, address, and city for delivery.",
 };
@@ -66,6 +67,9 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
         totalCents: 0,
       };
   const errorMessage = error ? errorMessages[error] : null;
+  const emailErrorMessage = error === "email-required" ? errorMessages["email-required"] : undefined;
+  const referralErrorMessage = error === "referral-invalid" ? errorMessages["referral-invalid"] : undefined;
+  const pageErrorMessage = emailErrorMessage || referralErrorMessage ? null : errorMessage;
   const successMessage = success ? successMessages[success] : null;
   const isGuestCheckout = guest === "1" || user?.is_anonymous === true;
 
@@ -80,7 +84,7 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
           </div>
         </div>
 
-        {errorMessage ? <p className="account-alert error">{errorMessage}</p> : null}
+        {pageErrorMessage ? <p className="account-alert error">{pageErrorMessage}</p> : null}
         {successMessage ? <p className="account-alert success">{successMessage}</p> : null}
 
         {cart.lines.length === 0 ? (
@@ -171,6 +175,7 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
               ) : null}
               <CheckoutAddressFields
                 addresses={addresses}
+                emailErrorMessage={emailErrorMessage}
                 isGuest={isGuestCheckout}
                 profile={profile}
               />
@@ -206,6 +211,7 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
               </aside>
               <CheckoutPaymentMethod formId="checkout-order-form" />
               <ReferralCodeField
+                errorMessage={referralErrorMessage}
                 formId="checkout-order-form"
                 savedCode={profile?.referralCode || cookieReferralCode}
               />

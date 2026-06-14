@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   try {
     const profile = await ensureCustomerProfile(auth.user);
     const supabase = createSupabaseServiceRoleClient();
-    const [addressesResult, ordersResult] = await Promise.all([
+    const [addressesResult, ordersResult, adminResult] = await Promise.all([
       supabase
         .from("customer_addresses")
         .select(
@@ -33,6 +33,13 @@ export async function GET(request: Request) {
         .eq("customer_id", profile.id)
         .order("created_at", { ascending: false })
         .limit(20),
+      auth.user.email
+        ? supabase
+            .from("admin_users")
+            .select("email")
+            .ilike("email", auth.user.email)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
     ]);
 
     if (addressesResult.error) {
@@ -43,8 +50,13 @@ export async function GET(request: Request) {
       throw new Error(ordersResult.error.message);
     }
 
+    if (adminResult.error) {
+      throw new Error(adminResult.error.message);
+    }
+
     return mobileJson({
       addresses: addressesResult.data ?? [],
+      isAdmin: Boolean(adminResult.data),
       orders: ordersResult.data ?? [],
       profile,
     });
@@ -53,4 +65,3 @@ export async function GET(request: Request) {
     return mobileJson({ error: "Unable to load your account." }, { status: 500 });
   }
 }
-

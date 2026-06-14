@@ -111,22 +111,17 @@ function AddressFields({ address, profile }: { address?: CustomerAddress; profil
           </select>
         </label>
       </div>
-      <div className="account-form-split">
-        <label>
-          Postal code
-          <input name="postal_code" defaultValue={address?.postalCode ?? ""} />
-        </label>
-        <label>
-          Country
-          <select name="country" required defaultValue="Hong Kong">
-            {countryOptions.map((country) => (
-              <option key={country} value={country} disabled={country === "Philippines"}>
-                {country}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <input name="postal_code" type="hidden" value={address?.postalCode ?? ""} />
+      <label>
+        Country
+        <select name="country" required defaultValue="Hong Kong">
+          {countryOptions.map((country) => (
+            <option key={country} value={country} disabled={country === "Philippines"}>
+              {country}
+            </option>
+          ))}
+        </select>
+      </label>
       <label className="account-checkbox-row">
         <input name="is_default" type="checkbox" defaultChecked={address?.isDefault ?? false} />
         Use as default shipping address

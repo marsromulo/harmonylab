@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 
 import { BrandHeader } from '@/components/brand-header';
+import { RegionSelect } from '@/components/region-select';
 import { Screen } from '@/components/screen';
 import { Brand } from '@/constants/brand';
 import {
@@ -32,7 +33,7 @@ type FormMessage = { text: string; type: 'error' | 'success' };
 const emptyAddressForm = {
   addressLine1: '',
   addressLine2: '',
-  city: 'Hong Kong',
+  city: '',
   firstName: '',
   label: 'Home',
   lastName: '',
@@ -243,7 +244,9 @@ export default function AccountScreen() {
           }>
           <Text style={styles.eyebrow}>YOUR ACCOUNT</Text>
           <Text style={styles.title}>Welcome back.</Text>
-          <Text style={styles.subtitle}>{session.user.email}</Text>
+          <Text style={styles.subtitle}>
+            {account?.profile.email || session.user.email || 'Guest customer'}
+          </Text>
           {message ? <Message message={message} /> : null}
 
           {accountLoading && !account ? (
@@ -297,6 +300,43 @@ export default function AccountScreen() {
                 ) : null}
               </View>
 
+              <Text style={styles.sectionTitle}>Customer information</Text>
+              <View style={styles.card}>
+                <Text style={styles.cardText}>
+                  <Text style={styles.detailLabel}>First name: </Text>
+                  {account?.profile.firstName || 'Not provided'}
+                  {'\n'}
+                  <Text style={styles.detailLabel}>Last name: </Text>
+                  {account?.profile.lastName || 'Not provided'}
+                  {'\n'}
+                  <Text style={styles.detailLabel}>Email: </Text>
+                  {account?.profile.email || 'Not provided'}
+                  {'\n'}
+                  <Text style={styles.detailLabel}>Phone: </Text>
+                  {account?.profile.phone || 'Not provided'}
+                </Text>
+              </View>
+
+              {account?.isAdmin ? (
+                <Pressable
+                  onPress={() => router.push('/admin-orders' as Href)}
+                  style={({ pressed }) => [
+                    styles.adminCard,
+                    pressed && styles.adminCardPressed,
+                  ]}>
+                  <View style={styles.sectionHeading}>
+                    <View style={styles.flex}>
+                      <Text style={styles.adminEyebrow}>ADMIN ACCESS</Text>
+                      <Text style={styles.cardTitle}>Manage customer orders</Text>
+                    </View>
+                    <Text style={styles.adminArrow}>›</Text>
+                  </View>
+                  <Text style={styles.cardText}>
+                    Review all orders, update delivery progress, and record referral payouts.
+                  </Text>
+                </Pressable>
+              ) : null}
+
               <View style={styles.sectionHeading}>
                 <Text style={styles.sectionTitle}>Saved addresses</Text>
                 <Pressable onPress={() => setShowAddressForm((current) => !current)}>
@@ -318,7 +358,7 @@ export default function AccountScreen() {
                       value={addressForm.lastName}
                     />
                   </View>
-                  {(['label', 'addressLine1', 'addressLine2', 'region', 'postalCode'] as const).map(
+                  {(['label', 'addressLine1', 'addressLine2'] as const).map(
                     (field) => (
                       <TextInput
                         key={field}
@@ -327,9 +367,6 @@ export default function AccountScreen() {
                           addressLine1: 'Address line 1',
                           addressLine2: 'Address line 2 (optional)',
                           label: 'Label, e.g. Home',
-                          phone: 'Phone',
-                          postalCode: 'Postal code (optional)',
-                          region: 'District / region (optional)',
                         }[field]}
                         placeholderTextColor="#929a94"
                         style={styles.input}
@@ -361,6 +398,12 @@ export default function AccountScreen() {
                     style={styles.input}
                     value={addressForm.city}
                   />
+                  <RegionSelect
+                    onChange={(value) =>
+                      setAddressForm((form) => ({ ...form, region: value }))
+                    }
+                    value={addressForm.region}
+                  />
                   <Pressable disabled={submitting} onPress={() => void saveAddress()} style={styles.button}>
                     {submitting ? (
                       <ActivityIndicator color={Brand.white} />
@@ -388,7 +431,7 @@ export default function AccountScreen() {
                       {address.address_line1}
                       {address.address_line2 ? `, ${address.address_line2}` : ''}
                       {'\n'}
-                      {[address.city, address.region, address.postal_code].filter(Boolean).join(', ')}
+                      {[address.city, address.region].filter(Boolean).join(', ')}
                     </Text>
                   </View>
                 ))
@@ -438,7 +481,15 @@ export default function AccountScreen() {
                     <Pressable
                       key={notification.id}
                       onPress={() => {
-                        if (notification.order_id) {
+                        const notificationUrl = notification.data.url;
+
+                        if (
+                          typeof notificationUrl === 'string' &&
+                          (notificationUrl.startsWith('/order/') ||
+                            notificationUrl.startsWith('/admin-order/'))
+                        ) {
+                          router.push(notificationUrl as Href);
+                        } else if (notification.order_id) {
                           router.push({
                             pathname: '/order/[id]',
                             params: { id: notification.order_id },
@@ -596,6 +647,17 @@ function AddressInput({
 
 const styles = StyleSheet.create({
   actionText: { color: Brand.orange, fontSize: 11, fontWeight: '800' },
+  adminArrow: { color: Brand.orange, fontSize: 30, fontWeight: '500' },
+  adminCard: {
+    backgroundColor: Brand.lightGreen,
+    borderColor: '#b9d1bf',
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 8,
+    padding: 18,
+  },
+  adminCardPressed: { opacity: 0.72 },
+  adminEyebrow: { color: Brand.orange, fontSize: 10, fontWeight: '800' },
   button: {
     alignItems: 'center',
     backgroundColor: Brand.orange,
@@ -611,6 +673,7 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   content: { gap: 14, padding: 22, paddingBottom: 40, paddingTop: 34 },
   deleteText: { color: '#9d4335', fontSize: 10, fontWeight: '800' },
+  detailLabel: { color: Brand.darkGreen, fontWeight: '800' },
   emptyText: { color: Brand.muted, fontSize: 13, lineHeight: 20 },
   errorMessage: { backgroundColor: '#fce8e5', borderColor: '#e8b7af' },
   errorText: { color: '#8b2f23', fontSize: 14, fontWeight: '700' },

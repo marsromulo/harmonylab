@@ -13,16 +13,20 @@ function getAddressLabel(address: CustomerAddress) {
 
 export function CheckoutAddressFields({
   addresses,
+  emailErrorMessage,
   isGuest,
   profile,
 }: {
   addresses: CustomerAddress[];
+  emailErrorMessage?: string;
   isGuest: boolean;
   profile: CustomerProfile | null;
 }) {
   const defaultAddressId = addresses.find((address) => address.isDefault)?.id ?? addresses[0]?.id ?? "";
   const [selectedAddressId, setSelectedAddressId] = useState(defaultAddressId);
   const [guestHydrated, setGuestHydrated] = useState(!isGuest);
+  const [localEmailError, setLocalEmailError] = useState("");
+  const [dismissedEmailError, setDismissedEmailError] = useState<string | null>(null);
   const selectedAddress = useMemo(
     () => addresses.find((address) => address.id === selectedAddressId) ?? null,
     [addresses, selectedAddressId],
@@ -77,6 +81,10 @@ export function CheckoutAddressFields({
     setValues((current) => ({ ...current, [key]: value }));
   }
 
+  const displayedEmailError =
+    localEmailError ||
+    (emailErrorMessage && emailErrorMessage !== dismissedEmailError ? emailErrorMessage : "");
+
   function selectAddress(addressId: string) {
     setSelectedAddressId(addressId);
     const address = addresses.find((candidate) => candidate.id === addressId);
@@ -122,11 +130,25 @@ export function CheckoutAddressFields({
           <input
             autoComplete="email"
             name="email"
-            onChange={(event) => updateValue("email", event.target.value)}
+            onChange={(event) => {
+              updateValue("email", event.target.value);
+              setLocalEmailError("");
+              setDismissedEmailError(emailErrorMessage ?? null);
+            }}
+            onInvalid={(event) =>
+              setLocalEmailError(
+                event.currentTarget.validity.valueMissing
+                  ? "Email address is required."
+                  : "Enter a valid email address.",
+              )
+            }
             required
             type="email"
             value={values.email}
           />
+          {displayedEmailError ? (
+            <span className="checkout-field-error">{displayedEmailError}</span>
+          ) : null}
         </label>
       ) : null}
       <div className="account-form-split">
@@ -211,28 +233,17 @@ export function CheckoutAddressFields({
           </select>
         </label>
       </div>
-      <div className="account-form-split">
-        <label>
-          Postal code
-          <input
-            autoComplete="postal-code"
-            name="shipping_postal_code"
-            onChange={(event) => updateValue("postalCode", event.target.value)}
-            placeholder="Optional"
-            value={values.postalCode}
-          />
-        </label>
-        <label>
-          Country
-          <select name="shipping_country" required value={values.country} onChange={(event) => updateValue("country", event.target.value)}>
-            {countryOptions.map((country) => (
-              <option key={country} value={country} disabled={country === "Philippines"}>
-                {country}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <input name="shipping_postal_code" type="hidden" value={values.postalCode} />
+      <label>
+        Country
+        <select name="shipping_country" required value={values.country} onChange={(event) => updateValue("country", event.target.value)}>
+          {countryOptions.map((country) => (
+            <option key={country} value={country} disabled={country === "Philippines"}>
+              {country}
+            </option>
+          ))}
+        </select>
+      </label>
       <label>
         Delivery notes
         <textarea name="delivery_notes" rows={4} placeholder="Optional delivery notes" />

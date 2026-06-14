@@ -3,6 +3,8 @@ import { normalizeHongKongPhone } from "@/lib/customer-fields";
 import { getMobileUser, getRequiredString, mobileJson, mobileOptions } from "@/lib/mobile-api";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
+const hongKongRegions = new Set(["Hong Kong", "Kowloon", "New Territories"]);
+
 export function OPTIONS() {
   return mobileOptions();
 }
@@ -27,10 +29,11 @@ export async function POST(request: Request) {
   const addressLine1 = getRequiredString(body.addressLine1, 200);
   const city = getRequiredString(body.city, 100);
   const phone = normalizeHongKongPhone(getRequiredString(body.phone, 20));
+  const region = getRequiredString(body.region, 100);
 
-  if (!firstName || !lastName || !addressLine1 || !city) {
+  if (!firstName || !lastName || !addressLine1 || !city || !hongKongRegions.has(region)) {
     return mobileJson(
-      { error: "First name, last name, address, and city are required." },
+      { error: "First name, last name, address, city, and region are required." },
       { status: 400 },
     );
   }
@@ -64,7 +67,7 @@ export async function POST(request: Request) {
         address_line1: addressLine1,
         address_line2: getRequiredString(body.addressLine2, 200) || null,
         city,
-        region: getRequiredString(body.region, 100) || null,
+        region,
         postal_code: getRequiredString(body.postalCode, 30) || null,
         country: "Hong Kong",
         is_default: count === 0,

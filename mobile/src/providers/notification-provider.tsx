@@ -60,7 +60,10 @@ if (Platform.OS !== 'web') {
 
 function getNotificationUrl(notification: Notifications.Notification) {
   const url = notification.request.content.data?.url;
-  return typeof url === 'string' && url.startsWith('/order/') ? url : null;
+  return typeof url === 'string' &&
+    (url.startsWith('/order/') || url.startsWith('/admin-order/'))
+    ? url
+    : null;
 }
 
 async function getExpoPushToken() {
@@ -262,17 +265,20 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     }
 
     const subscription = AppState.addEventListener('change', (state) => {
-      if (
-        state === 'active' &&
-        pushRegistrationStatus !== 'registered' &&
-        pushRegistrationStatus !== 'registering'
-      ) {
-        void registerDevice();
+      if (state === 'active') {
+        void refreshNotifications();
+
+        if (
+          pushRegistrationStatus !== 'registered' &&
+          pushRegistrationStatus !== 'registering'
+        ) {
+          void registerDevice();
+        }
       }
     });
 
     return () => subscription.remove();
-  }, [pushRegistrationStatus, registerDevice, session]);
+  }, [pushRegistrationStatus, refreshNotifications, registerDevice, session]);
 
   useEffect(() => {
     if (Platform.OS === 'web') {

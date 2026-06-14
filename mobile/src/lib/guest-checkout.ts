@@ -15,13 +15,13 @@ export type GuestCheckoutDetails = {
 export const emptyGuestCheckoutDetails: GuestCheckoutDetails = {
   addressLine1: '',
   addressLine2: '',
-  city: 'Hong Kong',
+  city: '',
   email: '',
   firstName: '',
   lastName: '',
   phone: '',
   postalCode: '',
-  region: 'Hong Kong',
+  region: '',
 };
 
 const storageKey = 'harmonylab-guest-checkout-v1';

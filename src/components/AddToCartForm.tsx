@@ -50,14 +50,14 @@ function animateToCart(form: HTMLFormElement) {
       },
     ],
     {
-      duration: 2000,
+      duration: 4000,
       easing: "cubic-bezier(0.2, 0.75, 0.25, 1)",
       fill: "forwards",
     },
   );
 
   animation.addEventListener("finish", () => dot.remove());
-  window.setTimeout(() => dot.remove(), 2200);
+  window.setTimeout(() => dot.remove(), 4200);
 }
 
 export function AddToCartForm({ buttonClassName, productId, showQuantity = false }: AddToCartFormProps) {

@@ -23,6 +23,8 @@ type ProductRow = {
   price_cents: number;
 };
 
+const hongKongRegions = new Set(["Hong Kong", "Kowloon", "New Territories"]);
+
 function getPaymentMethod(value: unknown) {
   if (value === "alipay_hk" || value === "fps") {
     return value;
@@ -124,10 +126,19 @@ export async function POST(request: Request) {
       const phone = normalizeHongKongPhone(getRequiredString(body.phone, 20));
       const addressLine1 = getRequiredString(body.addressLine1, 200);
       const city = getRequiredString(body.city, 100);
+      const region = getRequiredString(body.region, 100);
 
-      if (!firstName || !lastName || !email || !phone || !addressLine1 || !city) {
+      if (
+        !firstName ||
+        !lastName ||
+        !email ||
+        !phone ||
+        !addressLine1 ||
+        !city ||
+        !hongKongRegions.has(region)
+      ) {
         return mobileJson(
-          { error: "Guest name, email, phone, address, and city are required." },
+          { error: "Guest name, email, phone, address, city, and region are required." },
           { status: 400 },
         );
       }
@@ -148,7 +159,7 @@ export async function POST(request: Request) {
         last_name: lastName,
         phone,
         postal_code: getRequiredString(body.postalCode, 30) || null,
-        region: getRequiredString(body.region, 100) || null,
+        region,
       };
       await upsertDefaultCustomerAddress(profile.id, {
         firstName,

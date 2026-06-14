@@ -8,7 +8,7 @@ import { createMemberAction } from "./actions";
 
 export const metadata: Metadata = {
   title: "Members | Harmony Lab Admin",
-  description: "Manage members and referral NUC point totals.",
+  description: "Manage members and referral REF point totals.",
 };
 
 type AdminMembersPageProps = {
@@ -55,7 +55,7 @@ export default async function AdminMembersPage({ searchParams }: AdminMembersPag
                 <th>Member</th>
                 <th>Phone No.</th>
                 <th>Referral Code</th>
-                <th>NUC Points</th>
+                <th>REF points</th>
                 <th>Actions</th>
               </tr>
             </thead>

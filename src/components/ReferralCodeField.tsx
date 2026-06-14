@@ -6,9 +6,20 @@ export function normalizeReferralCode(value: string) {
   return value.trim().replace(/[^\w-]/g, "").toUpperCase().slice(0, 40);
 }
 
-export function ReferralCodeField({ formId, savedCode }: { formId: string; savedCode?: string }) {
+export function ReferralCodeField({
+  errorMessage,
+  formId,
+  savedCode,
+}: {
+  errorMessage?: string;
+  formId: string;
+  savedCode?: string;
+}) {
   const [manualCode, setManualCode] = useState("");
+  const [dismissedErrorMessage, setDismissedErrorMessage] = useState<string | null>(null);
   const normalizedSavedCode = normalizeReferralCode(savedCode ?? "");
+  const fieldError =
+    errorMessage && errorMessage !== dismissedErrorMessage ? errorMessage : "";
 
   if (normalizedSavedCode) {
     return (
@@ -31,8 +42,12 @@ export function ReferralCodeField({ formId, savedCode }: { formId: string; saved
         name="referral_code"
         placeholder="Optional"
         value={manualCode}
-        onChange={(event) => setManualCode(normalizeReferralCode(event.target.value))}
+        onChange={(event) => {
+          setManualCode(normalizeReferralCode(event.target.value));
+          setDismissedErrorMessage(errorMessage ?? null);
+        }}
       />
+      {fieldError ? <span className="checkout-field-error">{fieldError}</span> : null}
     </label>
   );
 }

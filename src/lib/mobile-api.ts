@@ -59,6 +59,44 @@ export async function getMobileUser(request: Request): Promise<
   return { user };
 }
 
+export async function getMobileAdmin(request: Request): Promise<
+  | {
+      response: Response;
+      user?: never;
+    }
+  | {
+      response?: never;
+      user: User;
+    }
+> {
+  const auth = await getMobileUser(request);
+
+  if (auth.response) {
+    return auth;
+  }
+
+  if (!auth.user.email) {
+    return {
+      response: mobileJson({ error: "Admin access is required." }, { status: 403 }),
+    };
+  }
+
+  const supabase = createSupabaseServiceRoleClient();
+  const { data, error } = await supabase
+    .from("admin_users")
+    .select("email")
+    .ilike("email", auth.user.email)
+    .maybeSingle();
+
+  if (error || !data) {
+    return {
+      response: mobileJson({ error: "Admin access is required." }, { status: 403 }),
+    };
+  }
+
+  return { user: auth.user };
+}
+
 export function getRequiredString(value: unknown, maximumLength = 200) {
   if (typeof value !== "string") {
     return "";

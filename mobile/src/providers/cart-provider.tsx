@@ -149,7 +149,7 @@ export function CartProvider({ children }: PropsWithChildren) {
       requestAnimationFrame(() => {
         Animated.parallel([
           Animated.timing(flightProgress, {
-            duration: 650,
+            duration: 1300,
             easing: Easing.inOut(Easing.cubic),
             toValue: 1,
             useNativeDriver: true,

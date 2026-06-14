@@ -9,7 +9,7 @@ import { deleteMemberAction, updateMemberAction } from "../actions";
 
 export const metadata: Metadata = {
   title: "Member Details | Harmony Lab Admin",
-  description: "Member information and referral NUC point totals.",
+  description: "Member information and referral REF point totals.",
 };
 
 type AdminMemberDetailPageProps = {
@@ -107,7 +107,7 @@ export default async function AdminMemberDetailPage({ params, searchParams }: Ad
               <dd>{member.referredOrderCount}</dd>
             </div>
             <div>
-              <dt>Total NUC points</dt>
+              <dt>Total REF points</dt>
               <dd>{formatNucPoints(member.totalNucPoints)}</dd>
             </div>
           </dl>
@@ -125,7 +125,7 @@ export default async function AdminMemberDetailPage({ params, searchParams }: Ad
               <tr>
                 <th>Order</th>
                 <th>Date</th>
-                <th>NUC Points</th>
+                <th>REF points</th>
               </tr>
             </thead>
             <tbody>

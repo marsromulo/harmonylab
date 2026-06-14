@@ -77,12 +77,16 @@ export async function createCheckoutOrderAction(formData: FormData) {
   const paymentMethod = getPaymentMethod(getString(formData, "payment_method"));
   const enteredReferralCode = getString(formData, "referral_code");
 
+  if (user.is_anonymous && !email) {
+    redirect("/checkout?guest=1&error=email-required");
+  }
+
   if (
     !firstName ||
     !lastName ||
     !shippingAddressLine1 ||
     !shippingCity ||
-    (user.is_anonymous && (!email || !phone))
+    (user.is_anonymous && !phone)
   ) {
     redirect("/checkout?error=shipping-invalid");
   }
@@ -93,7 +97,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
     const referralResult = await validateMemberReferralCode(enteredReferralCode);
 
     if (!referralResult.valid) {
-      redirect("/checkout?error=referral-invalid");
+      redirect(`/checkout?${user.is_anonymous ? "guest=1&" : ""}error=referral-invalid`);
     }
 
     referralCode = referralResult.referralCode;

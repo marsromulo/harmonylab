@@ -13,8 +13,14 @@ import {
   View,
 } from 'react-native';
 
+import { RegionSelect } from '@/components/region-select';
 import { Brand } from '@/constants/brand';
-import { apiRequest, publicApiRequest, type MobileAccount } from '@/lib/api';
+import {
+  apiRequest,
+  publicApiRequest,
+  validateReferralCode,
+  type MobileAccount,
+} from '@/lib/api';
 import {
   emptyGuestCheckoutDetails,
   loadGuestCheckoutDetails,
@@ -48,6 +54,11 @@ type CheckoutQuote = {
 };
 
 type PaymentMethod = 'alipay_hk' | 'credit_card' | 'fps';
+type CheckoutFieldErrors = {
+  email?: string;
+  referralCode?: string;
+  region?: string;
+};
 
 const paymentMethods: {
   detail: string;
@@ -91,6 +102,8 @@ export default function CheckoutScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageIsError, setMessageIsError] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<CheckoutFieldErrors>({});
   const [completedOrder, setCompletedOrder] = useState('');
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
@@ -151,12 +164,12 @@ export default function CheckoutScreen() {
               addressLine1: defaultAddress.address_line1,
               addressLine2: defaultAddress.address_line2 ?? '',
               city: defaultAddress.city,
-              email: result.profile.email ?? current.email,
+              email: result.profile.email?.trim() || current.email,
               firstName: defaultAddress.first_name ?? result.profile.firstName ?? '',
               lastName: defaultAddress.last_name ?? result.profile.lastName ?? '',
               phone: normalizeLocalPhone(defaultAddress.phone ?? result.profile.phone ?? ''),
               postalCode: defaultAddress.postal_code ?? '',
-              region: defaultAddress.region ?? 'Hong Kong',
+              region: defaultAddress.region ?? current.region,
             }));
           }
         }
@@ -164,6 +177,7 @@ export default function CheckoutScreen() {
       .catch((error: unknown) => {
         if (active) {
           setMessage(error instanceof Error ? error.message : 'Unable to load checkout.');
+          setMessageIsError(true);
         }
       })
       .finally(() => {
@@ -227,15 +241,18 @@ export default function CheckoutScreen() {
         clearCart();
         setCompletedOrder(status.orderNumber);
         setMessage('');
+        setMessageIsError(false);
         return true;
       }
 
       setMessage(
         `Payment for order ${status.orderNumber} is still ${status.paymentStatus}. You can check again without creating another order.`,
       );
+      setMessageIsError(false);
       return false;
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to confirm payment.');
+      setMessageIsError(true);
       return false;
     } finally {
       setVerifying(false);
@@ -249,13 +266,49 @@ export default function CheckoutScreen() {
 
     setSubmitting(true);
     setMessage('');
+    setMessageIsError(false);
+    setFieldErrors({});
+    const nextFieldErrors: CheckoutFieldErrors = {};
 
     try {
-      let checkoutSession = session;
-
       if (isGuest) {
         await saveGuestCheckoutDetails(guestDetails);
+
+        if (!guestDetails.email.trim()) {
+          nextFieldErrors.email = 'Email address is required.';
+        }
+
+        if (!guestDetails.region.trim()) {
+          nextFieldErrors.region = 'Please select a region.';
+        }
+
+        if (
+          !guestDetails.firstName.trim() ||
+          !guestDetails.lastName.trim() ||
+          guestDetails.phone.length !== 8 ||
+          !guestDetails.addressLine1.trim() ||
+          !guestDetails.city.trim()
+        ) {
+          setMessage('Please complete all required delivery details.');
+          setMessageIsError(true);
+        }
       }
+
+      if (referralCode.trim()) {
+        const referralIsValid = await validateReferralCode(referralCode);
+
+        if (!referralIsValid) {
+          nextFieldErrors.referralCode =
+            'That referral code was not found. Check the code or leave it blank.';
+        }
+      }
+
+      if (Object.keys(nextFieldErrors).length > 0 || (isGuest && !guestDetailsComplete)) {
+        setFieldErrors(nextFieldErrors);
+        return;
+      }
+
+      let checkoutSession = session;
 
       if (!checkoutSession) {
         const { data, error } = await supabase.auth.signInAnonymously({
@@ -310,6 +363,7 @@ export default function CheckoutScreen() {
       await confirmPayment(result.orderNumber, checkoutSession);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to start checkout.');
+      setMessageIsError(true);
     } finally {
       setSubmitting(false);
     }
@@ -347,15 +401,19 @@ export default function CheckoutScreen() {
     guestDetails.email.trim() &&
     guestDetails.phone.length === 8 &&
     guestDetails.addressLine1.trim() &&
-    guestDetails.city.trim();
+    guestDetails.city.trim() &&
+    guestDetails.region.trim();
   const checkoutDisabled =
     submitting ||
     verifying ||
     items.length === 0 ||
-    (isGuest ? !guestDetailsComplete : !addressId);
+    (!isGuest && !addressId);
 
   function updateGuestDetail(key: keyof GuestCheckoutDetails, value: string) {
     setGuestDetails((current) => ({ ...current, [key]: value }));
+    if (key === 'email' || key === 'region') {
+      setFieldErrors((current) => ({ ...current, [key]: undefined }));
+    }
   }
 
   return (
@@ -369,8 +427,10 @@ export default function CheckoutScreen() {
       </Text>
 
       {message ? (
-        <View style={styles.message}>
-          <Text style={styles.messageText}>{message}</Text>
+        <View style={[styles.message, messageIsError && styles.errorMessage]}>
+          <Text style={[styles.messageText, messageIsError && styles.errorMessageText]}>
+            {message}
+          </Text>
         </View>
       ) : null}
 
@@ -402,9 +462,14 @@ export default function CheckoutScreen() {
             onChangeText={(value) => updateGuestDetail('email', value)}
             placeholder="Email address"
             placeholderTextColor="#929a94"
-            style={styles.input}
+            style={[styles.input, fieldErrors.email && styles.inputError]}
             value={guestDetails.email}
           />
+          {fieldErrors.email ? (
+            <Text accessibilityLiveRegion="polite" style={styles.fieldError}>
+              {fieldErrors.email}
+            </Text>
+          ) : null}
           <View style={styles.phoneField}>
             <Text style={styles.phonePrefix}>+852</Text>
             <TextInput
@@ -439,21 +504,19 @@ export default function CheckoutScreen() {
               style={[styles.input, styles.rowInput]}
               value={guestDetails.city}
             />
-            <TextInput
-              onChangeText={(value) => updateGuestDetail('region', value)}
-              placeholder="Region"
-              placeholderTextColor="#929a94"
-              style={[styles.input, styles.rowInput]}
-              value={guestDetails.region}
-            />
+            <View style={styles.rowInput}>
+              <RegionSelect
+                hasError={Boolean(fieldErrors.region)}
+                onChange={(value) => updateGuestDetail('region', value)}
+                value={guestDetails.region}
+              />
+            </View>
           </View>
-          <TextInput
-            onChangeText={(value) => updateGuestDetail('postalCode', value)}
-            placeholder="Postal code (optional)"
-            placeholderTextColor="#929a94"
-            style={styles.input}
-            value={guestDetails.postalCode}
-          />
+          {fieldErrors.region ? (
+            <Text accessibilityLiveRegion="polite" style={styles.fieldError}>
+              {fieldErrors.region}
+            </Text>
+          ) : null}
         </View>
       ) : account?.addresses.length ? (
         account.addresses.map((address) => (
@@ -487,18 +550,26 @@ export default function CheckoutScreen() {
       <TextInput
         autoCapitalize="characters"
         onChangeText={(value) =>
-          setReferralCode(
-            value
-              .replace(/[^\w-]/g, '')
-              .toUpperCase()
-              .slice(0, 40),
-          )
+          {
+            setReferralCode(
+              value
+                .replace(/[^\w-]/g, '')
+                .toUpperCase()
+                .slice(0, 40),
+            );
+            setFieldErrors((current) => ({ ...current, referralCode: undefined }));
+          }
         }
         placeholder="Referral code (optional)"
         placeholderTextColor="#929a94"
-        style={styles.input}
+        style={[styles.input, fieldErrors.referralCode && styles.inputError]}
         value={referralCode}
       />
+      {fieldErrors.referralCode ? (
+        <Text accessibilityLiveRegion="polite" style={styles.fieldError}>
+          {fieldErrors.referralCode}
+        </Text>
+      ) : null}
       <Text style={styles.helperText}>
         Enter a valid code to receive any referral benefit available for this purchase.
       </Text>
@@ -628,6 +699,9 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', backgroundColor: Brand.cream, flex: 1, justifyContent: 'center' },
   content: { gap: 14, padding: 20, paddingBottom: 42 },
   eyebrow: { color: Brand.orange, fontSize: 12, fontWeight: '800', letterSpacing: 1.5 },
+  errorMessage: { backgroundColor: '#fce8e5', borderColor: '#e8b7af', borderWidth: 1 },
+  errorMessageText: { color: '#8b2f23' },
+  fieldError: { color: '#b3261e', fontSize: 12, fontWeight: '700', marginTop: -5 },
   guestForm: { gap: 10 },
   helperText: { color: Brand.muted, fontSize: 12, lineHeight: 18, marginTop: -8 },
   input: {
@@ -641,6 +715,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
   },
   inputRow: { flexDirection: 'row', gap: 10 },
+  inputError: { borderColor: '#c83d2c' },
   link: { color: Brand.orange, fontSize: 12, fontWeight: '800', marginTop: 8 },
   message: { backgroundColor: Brand.lightGreen, borderRadius: 16, padding: 16 },
   messageText: { color: Brand.darkGreen, fontSize: 13, lineHeight: 20 },

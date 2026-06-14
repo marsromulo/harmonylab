@@ -63,7 +63,13 @@ export default async function AdminOrdersPage() {
                   <td>{formatOrderMoney(order.totalCents, order.currency)}</td>
                   <td>
                     {order.referralCodeEntered ? (
-                      <span className="admin-referral">{order.referralCodeEntered}</span>
+                      <details className="admin-referral-details">
+                        <summary className="admin-referral">{order.referralCodeEntered}</summary>
+                        <span className={`admin-referral-payout ${order.referralPayoutStatus}`}>
+                          {order.referralPayoutStatus === "paid" ? "Paid" : "Unpaid"}:{" "}
+                          {order.referralPointsAwarded}
+                        </span>
+                      </details>
                     ) : (
                       <span className="admin-empty-text">None</span>
                     )}

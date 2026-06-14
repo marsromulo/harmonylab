@@ -8,6 +8,7 @@ type CustomerPushNotification = {
   orderNumber: string;
   title: string;
   type: "order_created" | "order_status";
+  url?: string;
 };
 
 type ExpoPushTicket = {
@@ -44,12 +45,14 @@ async function sendExpoPushMessages({
   orderId,
   title,
   tokens,
+  url,
 }: {
   badge: number;
   body: string;
   orderId: string;
   title: string;
   tokens: string[];
+  url: string;
 }) {
   const validTokens = tokens.filter(isExpoPushToken);
 
@@ -67,7 +70,7 @@ async function sendExpoPushMessages({
           channelId: "orders",
           data: {
             orderId,
-            url: `/order/${orderId}`,
+            url,
           },
           priority: "high",
           sound: "default",
@@ -113,13 +116,14 @@ export async function createAndSendCustomerNotification(
   notification: CustomerPushNotification,
 ) {
   const supabase = createSupabaseServiceRoleClient();
+  const url = notification.url ?? `/order/${notification.orderId}`;
   const { error: insertError } = await supabase.from("customer_notifications").insert({
     body: notification.body,
     customer_id: notification.customerId,
     data: {
       orderId: notification.orderId,
       orderNumber: notification.orderNumber,
-      url: `/order/${notification.orderId}`,
+      url,
     },
     notification_key: notification.notificationKey,
     notification_type: notification.type,
@@ -164,9 +168,87 @@ export async function createAndSendCustomerNotification(
       orderId: notification.orderId,
       title: notification.title,
       tokens: (tokenRows ?? []).map((row) => row.expo_push_token),
+      url,
     });
   } catch (error) {
     console.error("Unable to deliver Expo push notification:", error);
+  }
+}
+
+export async function notifyAdminsOrderPaidForOrder(orderId: string) {
+  const supabase = createSupabaseServiceRoleClient();
+  const [
+    { data: order, error: orderError },
+    { data: adminRows, error: adminError },
+  ] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("id,order_number,customer_name,currency,total_cents")
+      .eq("id", orderId)
+      .maybeSingle(),
+    supabase.from("admin_users").select("email"),
+  ]);
+
+  if (orderError || !order) {
+    throw new Error(
+      `Unable to load paid order for admin notification: ${
+        orderError?.message ?? "Order not found."
+      }`,
+    );
+  }
+
+  if (adminError) {
+    throw new Error(`Unable to load admin users: ${adminError.message}`);
+  }
+
+  const adminEmails = new Set(
+    (adminRows ?? []).map((admin) => admin.email.trim().toLowerCase()),
+  );
+
+  if (adminEmails.size === 0) {
+    return;
+  }
+
+  const { data: profileRows, error: profileError } = await supabase
+    .from("customer_profiles")
+    .select("id,email")
+    .not("auth_user_id", "is", null);
+
+  if (profileError) {
+    throw new Error(`Unable to load admin customer profiles: ${profileError.message}`);
+  }
+
+  const adminProfiles = (profileRows ?? []).filter(
+    (profile) =>
+      typeof profile.email === "string" &&
+      adminEmails.has(profile.email.trim().toLowerCase()),
+  );
+  const formattedTotal = new Intl.NumberFormat("en-HK", {
+    currency: order.currency,
+    style: "currency",
+  }).format(order.total_cents / 100);
+
+  const results = await Promise.allSettled(
+    adminProfiles.map((profile) =>
+      createAndSendCustomerNotification({
+        body: `${order.order_number} from ${
+          order.customer_name || "a customer"
+        } was paid (${formattedTotal}). Tap to manage the order.`,
+        customerId: profile.id,
+        notificationKey: `admin-order-paid:${order.id}:${profile.id}`,
+        orderId: order.id,
+        orderNumber: order.order_number,
+        title: "New paid order",
+        type: "order_created",
+        url: `/admin-order/${order.id}`,
+      }),
+    ),
+  );
+
+  for (const result of results) {
+    if (result.status === "rejected") {
+      console.error("Admin order push notification failed:", result.reason);
+    }
   }
 }
 
@@ -194,6 +276,25 @@ export async function notifyCustomerOrderPaid(checkoutSessionId: string) {
     title: "Order confirmed",
     type: "order_created",
   });
+}
+
+export async function notifyAdminsOrderPaid(checkoutSessionId: string) {
+  const supabase = createSupabaseServiceRoleClient();
+  const { data: order, error } = await supabase
+    .from("orders")
+    .select("id")
+    .eq("stripe_checkout_session_id", checkoutSessionId)
+    .maybeSingle();
+
+  if (error || !order) {
+    throw new Error(
+      `Unable to load paid order for admin notification: ${
+        error?.message ?? "Order not found."
+      }`,
+    );
+  }
+
+  await notifyAdminsOrderPaidForOrder(order.id);
 }
 
 export async function notifyCustomerOrderPaidForOrder(orderId: string) {
