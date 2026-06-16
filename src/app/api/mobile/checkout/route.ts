@@ -1,4 +1,8 @@
-import { createCheckoutOrder, setOrderWonderPayment } from "@/lib/checkout";
+import {
+  createCheckoutOrder,
+  isCheckoutInventoryError,
+  setOrderWonderPayment,
+} from "@/lib/checkout";
 import { normalizeEmail, normalizeHongKongPhone } from "@/lib/customer-fields";
 import { ensureCustomerProfile, upsertDefaultCustomerAddress } from "@/lib/customers";
 import { getMobileUser, getRequiredString, mobileJson, mobileOptions } from "@/lib/mobile-api";
@@ -232,23 +236,36 @@ export async function POST(request: Request) {
       profile.fullName ||
       profile.email ||
       "Customer";
-    const order = await createCheckoutOrder({
-      authUserId: auth.user.id,
-      customerEmail: profile.email ?? auth.user.email ?? null,
-      customerId: profile.id,
-      customerName,
-      deliveryNotes: getRequiredString(body.deliveryNotes, 500),
-      expectedCurrency: currency,
-      expectedSubtotalCents: subtotalCents,
-      lines,
-      referralCode,
-      shippingAddressLine1: address.address_line1,
-      shippingAddressLine2: address.address_line2 ?? "",
-      shippingCity: address.city,
-      shippingCountry: address.country,
-      shippingPostalCode: address.postal_code ?? "",
-      shippingRegion: address.region ?? "",
-    });
+    let order;
+
+    try {
+      order = await createCheckoutOrder({
+        authUserId: auth.user.id,
+        customerEmail: profile.email ?? auth.user.email ?? null,
+        customerId: profile.id,
+        customerName,
+        deliveryNotes: getRequiredString(body.deliveryNotes, 500),
+        expectedCurrency: currency,
+        expectedSubtotalCents: subtotalCents,
+        lines,
+        referralCode,
+        shippingAddressLine1: address.address_line1,
+        shippingAddressLine2: address.address_line2 ?? "",
+        shippingCity: address.city,
+        shippingCountry: address.country,
+        shippingPostalCode: address.postal_code ?? "",
+        shippingRegion: address.region ?? "",
+      });
+    } catch (error) {
+      if (isCheckoutInventoryError(error)) {
+        return mobileJson(
+          { error: "One or more products no longer have enough stock. Please review your cart." },
+          { status: 409 },
+        );
+      }
+
+      throw error;
+    }
 
     const lineItems = lines.map((line) => {
       const product = productsById.get(line.productId)!;

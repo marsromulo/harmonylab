@@ -36,7 +36,70 @@ type CheckoutOrderRow = {
   total_cents: number;
 };
 
+export class CheckoutInventoryError extends Error {
+  constructor(message = "One or more products do not have enough stock.") {
+    super(message);
+    this.name = "CheckoutInventoryError";
+  }
+}
+
+export function isCheckoutInventoryError(error: unknown): error is CheckoutInventoryError {
+  return (
+    error instanceof CheckoutInventoryError ||
+    (error instanceof Error &&
+      (error.message.includes("does not have enough stock") ||
+        error.message.includes("unavailable product")))
+  );
+}
+
+async function validateCheckoutInventory(lines: CheckoutOrderLine[]) {
+  const requestedByProductId = new Map<string, number>();
+
+  for (const line of lines) {
+    requestedByProductId.set(
+      line.productId,
+      (requestedByProductId.get(line.productId) ?? 0) + line.quantity,
+    );
+  }
+
+  const supabase = createSupabaseServiceRoleClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("id,name,inventory_quantity")
+    .in("id", [...requestedByProductId.keys()])
+    .eq("is_active", true);
+
+  if (error) {
+    throw new Error(`Unable to validate product inventory: ${error.message}`);
+  }
+
+  const products = new Map(
+    (data ?? []).map((product) => [
+      product.id,
+      {
+        inventoryQuantity: product.inventory_quantity,
+        name: product.name,
+      },
+    ]),
+  );
+
+  for (const [productId, requestedQuantity] of requestedByProductId) {
+    const product = products.get(productId);
+
+    if (!product) {
+      throw new CheckoutInventoryError("One or more products are no longer available.");
+    }
+
+    if (product.inventoryQuantity < requestedQuantity) {
+      throw new CheckoutInventoryError(
+        `${product.name} does not have enough stock for the requested quantity.`,
+      );
+    }
+  }
+}
+
 export async function createCheckoutOrder(input: CreateCheckoutOrderInput) {
+  await validateCheckoutInventory(input.lines);
   const supabase = createSupabaseServiceRoleClient();
   const { data, error } = await supabase.rpc("create_checkout_order", {
     p_auth_user_id: input.authUserId,
@@ -62,6 +125,10 @@ export async function createCheckoutOrder(input: CreateCheckoutOrderInput) {
   const order = Array.isArray(data) ? (data[0] as CheckoutOrderRow | undefined) : undefined;
 
   if (error || !order) {
+    if (error && isCheckoutInventoryError(new Error(error.message))) {
+      throw new CheckoutInventoryError(error.message);
+    }
+
     throw new Error(`Unable to create order: ${error?.message ?? "Invalid response."}`);
   }
 

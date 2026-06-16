@@ -20,6 +20,7 @@ import { useNotifications } from '@/providers/notification-provider';
 
 type Message = { text: string; type: 'error' | 'success' };
 type FulfillmentStatus = 'shipped' | 'delivered';
+type PaymentStatus = 'unpaid' | 'paid' | 'cancelled';
 type ReferralStatus = 'unpaid' | 'paid';
 
 function formatMoney(cents: number, currency: string) {
@@ -41,6 +42,7 @@ export default function AdminOrderScreen() {
   const [order, setOrder] = useState<MobileAdminOrderDetails | null>(null);
   const [fulfillmentStatus, setFulfillmentStatus] =
     useState<FulfillmentStatus>('shipped');
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('unpaid');
   const [referralStatus, setReferralStatus] = useState<ReferralStatus>('unpaid');
   const [carrier, setCarrier] = useState('');
   const [trackingNumber, setTrackingNumber] = useState('');
@@ -48,11 +50,16 @@ export default function AdminOrderScreen() {
   const [notes, setNotes] = useState('');
   const [message, setMessage] = useState<Message | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<'fulfillment' | 'referral' | null>(null);
+  const [saving, setSaving] = useState<'fulfillment' | 'payment' | 'referral' | null>(null);
 
   const applyOrder = useCallback((nextOrder: MobileAdminOrderDetails) => {
     setOrder(nextOrder);
     setFulfillmentStatus(nextOrder.status === 'delivered' ? 'delivered' : 'shipped');
+    setPaymentStatus(
+      nextOrder.payment_status === 'paid' || nextOrder.payment_status === 'cancelled'
+        ? nextOrder.payment_status
+        : 'unpaid',
+    );
     setReferralStatus(nextOrder.referral_payout_status);
     setCarrier(nextOrder.fulfillment_carrier ?? '');
     setTrackingNumber(nextOrder.fulfillment_tracking_number ?? '');
@@ -163,6 +170,41 @@ export default function AdminOrderScreen() {
     }
   }
 
+  async function savePaymentStatus() {
+    if (!session) {
+      return;
+    }
+
+    setSaving('payment');
+    setMessage(null);
+
+    try {
+      const result = await apiRequest<{ order: MobileAdminOrderDetails }>(
+        `/api/mobile/admin/orders/${encodeURIComponent(orderId)}`,
+        session,
+        {
+          body: JSON.stringify({
+            action: 'payment_status',
+            status: paymentStatus,
+          }),
+          method: 'PATCH',
+        },
+      );
+      applyOrder(result.order);
+      setMessage({ text: 'Payment status updated.', type: 'success' });
+    } catch (saveError) {
+      setMessage({
+        text:
+          saveError instanceof Error
+            ? saveError.message
+            : 'Unable to update the payment status.',
+        type: 'error',
+      });
+    } finally {
+      setSaving(null);
+    }
+  }
+
   if (authLoading || loading) {
     return (
       <Screen style={styles.center}>
@@ -244,12 +286,36 @@ export default function AdminOrderScreen() {
                 </Text>
               </View>
             ))}
-            <Detail label="Payment status" value={order.payment_status.toUpperCase()} />
             <Detail label="Payment method" value={order.payment_method || 'Not selected'} />
             <Detail
               label="Wonder reference"
               value={order.wonder_transaction_id || order.wonder_order_number || 'Pending'}
             />
+            <Text style={styles.controlLabel}>Payment status</Text>
+            <SegmentedControl
+              onChange={(value) => setPaymentStatus(value as PaymentStatus)}
+              options={[
+                { label: 'Unpaid', value: 'unpaid' },
+                { label: 'Paid', value: 'paid' },
+                { label: 'Cancelled', value: 'cancelled' },
+              ]}
+              value={paymentStatus}
+            />
+            {order.payment_status === 'paid' ? (
+              <Text style={styles.helpText}>
+                Cancelling does not restore inventory or reverse referral points.
+              </Text>
+            ) : null}
+            <Pressable
+              disabled={saving !== null}
+              onPress={() => void savePaymentStatus()}
+              style={[styles.button, saving !== null && styles.buttonDisabled]}>
+              {saving === 'payment' ? (
+                <ActivityIndicator color={Brand.white} />
+              ) : (
+                <Text style={styles.buttonText}>UPDATE PAYMENT STATUS</Text>
+              )}
+            </Pressable>
           </View>
 
           <View style={styles.card}>
@@ -398,6 +464,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: Brand.white, borderRadius: 18, gap: 12, padding: 18 },
   center: { alignItems: 'center', gap: 18, justifyContent: 'center', padding: 24 },
   content: { gap: 16, padding: 22, paddingBottom: 44 },
+  controlLabel: { color: Brand.muted, fontSize: 11, fontWeight: '700', marginTop: 2 },
   detail: { gap: 3 },
   detailLabel: { color: Brand.muted, fontSize: 11, fontWeight: '700' },
   detailValue: { color: Brand.darkGreen, fontSize: 14, lineHeight: 21 },
@@ -405,6 +472,7 @@ const styles = StyleSheet.create({
   errorText: { color: '#8b2f23', fontSize: 15, textAlign: 'center' },
   eyebrow: { color: Brand.orange, fontSize: 12, fontWeight: '800' },
   flex: { flex: 1 },
+  helpText: { color: Brand.muted, fontSize: 12, lineHeight: 18 },
   input: {
     backgroundColor: Brand.cream,
     borderColor: '#e5dbcc',

@@ -36,6 +36,7 @@ const errorMessages: Record<string, string> = {
   "email-required": "Email address is required.",
   "referral-invalid": "That referral code was not found. Contact your referrer for the correct code or leave it blank.",
   "shipping-invalid": "Please enter your name, address, and city for delivery.",
+  "stock-unavailable": "One or more products no longer have enough stock. Please review your cart.",
 };
 
 const successMessages: Record<string, string> = {

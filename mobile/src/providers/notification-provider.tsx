@@ -111,6 +111,17 @@ async function getExpoPushToken() {
   ).data;
 }
 
+function getPushRegistrationErrorMessage(error: unknown) {
+  const message =
+    error instanceof Error ? error.message : 'Unable to register this phone for notifications.';
+
+  if (message.includes('FIS_AUTH_ERROR')) {
+    return 'Phone notifications are temporarily unavailable because the app could not connect to Firebase. Please install the next app update and try again.';
+  }
+
+  return message;
+}
+
 export function NotificationProvider({ children }: PropsWithChildren) {
   const { session } = useAuth();
   const [notifications, setNotifications] = useState<MobileNotification[]>([]);
@@ -214,8 +225,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       setExpoPushToken(token);
       setPushRegistrationStatus('registered');
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Unable to register this phone for notifications.';
+      const message = getPushRegistrationErrorMessage(error);
       const permissions = await Notifications.getPermissionsAsync().catch(() => null);
 
       setPushRegistrationError(message);

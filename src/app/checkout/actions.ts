@@ -2,7 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { getCartSummary } from "@/lib/cart";
-import { createCheckoutOrder, setOrderWonderPayment } from "@/lib/checkout";
+import {
+  createCheckoutOrder,
+  isCheckoutInventoryError,
+  setOrderWonderPayment,
+} from "@/lib/checkout";
 import { normalizeEmail, normalizeHongKongPhone } from "@/lib/customer-fields";
 import { ensureCustomerProfile, upsertDefaultCustomerAddress } from "@/lib/customers";
 import { validateMemberReferralCode } from "@/lib/referrals";
@@ -159,26 +163,36 @@ export async function createCheckoutOrderAction(formData: FormData) {
   }
 
   const currency = cart.lines[0]?.product.currency ?? "HKD";
-  const order = await createCheckoutOrder({
-    authUserId: user.id,
-    customerEmail: email || null,
-    customerId: customer.id,
-    customerName: fullName || customer.fullName || user.email || "Customer",
-    deliveryNotes,
-    expectedCurrency: currency,
-    expectedSubtotalCents: cart.subtotalCents,
-    lines: cart.lines.map((line) => ({
-      productId: line.product.id,
-      quantity: line.quantity,
-    })),
-    referralCode,
-    shippingAddressLine1,
-    shippingAddressLine2,
-    shippingCity,
-    shippingCountry,
-    shippingPostalCode,
-    shippingRegion,
-  });
+  let order;
+
+  try {
+    order = await createCheckoutOrder({
+      authUserId: user.id,
+      customerEmail: email || null,
+      customerId: customer.id,
+      customerName: fullName || customer.fullName || user.email || "Customer",
+      deliveryNotes,
+      expectedCurrency: currency,
+      expectedSubtotalCents: cart.subtotalCents,
+      lines: cart.lines.map((line) => ({
+        productId: line.product.id,
+        quantity: line.quantity,
+      })),
+      referralCode,
+      shippingAddressLine1,
+      shippingAddressLine2,
+      shippingCity,
+      shippingCountry,
+      shippingPostalCode,
+      shippingRegion,
+    });
+  } catch (error) {
+    if (isCheckoutInventoryError(error)) {
+      redirect(`/checkout?${user.is_anonymous ? "guest=1&" : ""}error=stock-unavailable`);
+    }
+
+    throw error;
+  }
 
   const siteUrl = getSiteUrl();
   const lineItems = cart.lines.map((line) => ({

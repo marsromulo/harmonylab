@@ -1,5 +1,10 @@
 import { getMobileAdmin, getRequiredString, mobileJson, mobileOptions } from "@/lib/mobile-api";
-import { createAndSendCustomerNotification } from "@/lib/push-notifications";
+import { sendPaidOrderEmailsForOrder } from "@/lib/order-email";
+import {
+  createAndSendCustomerNotification,
+  notifyAdminsOrderPaidForOrder,
+  notifyCustomerOrderPaidForOrder,
+} from "@/lib/push-notifications";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 const orderSelect =
@@ -84,6 +89,90 @@ export async function PATCH(
 
       if (error) {
         throw new Error(error.message);
+      }
+    } else if (body.action === "payment_status") {
+      if (
+        body.status !== "paid" &&
+        body.status !== "unpaid" &&
+        body.status !== "cancelled"
+      ) {
+        return mobileJson({ error: "Invalid payment status." }, { status: 400 });
+      }
+
+      const paymentStatus = body.status;
+      const { data: existingOrder, error: existingOrderError } = await supabase
+        .from("orders")
+        .select("customer_id,order_number,payment_status,status")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (existingOrderError || !existingOrder) {
+        return mobileJson({ error: "Order not found." }, { status: 404 });
+      }
+
+      if (existingOrder.payment_status === "paid" && paymentStatus === "unpaid") {
+        return mobileJson(
+          { error: "A paid order cannot be changed back to unpaid. Use Cancelled when needed." },
+          { status: 409 },
+        );
+      }
+
+      const nextOrderStatus =
+        paymentStatus === "cancelled"
+          ? "cancelled"
+          : paymentStatus === "paid"
+            ? ["processing", "shipped", "delivered"].includes(existingOrder.status)
+              ? existingOrder.status
+              : "paid"
+            : existingOrder.status === "cancelled"
+              ? "pending"
+              : existingOrder.status;
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          payment_status: paymentStatus,
+          status: nextOrderStatus,
+          ...(paymentStatus === "paid" ? { paid_at: new Date().toISOString() } : {}),
+        })
+        .eq("id", id);
+
+      if (error) {
+        const message = error.message.includes("does not have enough stock")
+          ? "Payment could not be marked paid because one or more products do not have enough inventory."
+          : "Unable to update the payment status.";
+        return mobileJson({ error: message }, { status: 409 });
+      }
+
+      if (paymentStatus === "paid" && existingOrder.payment_status !== "paid") {
+        const results = await Promise.allSettled([
+          sendPaidOrderEmailsForOrder(id),
+          notifyAdminsOrderPaidForOrder(id),
+          notifyCustomerOrderPaidForOrder(id),
+        ]);
+
+        for (const result of results) {
+          if (result.status === "rejected") {
+            console.error("Mobile manual payment status notification failed:", result.reason);
+          }
+        }
+      }
+
+      if (
+        paymentStatus === "cancelled" &&
+        existingOrder.payment_status !== "cancelled" &&
+        existingOrder.customer_id
+      ) {
+        await createAndSendCustomerNotification({
+          body: `Order ${existingOrder.order_number} has been cancelled. Contact Harmony Lab if you need assistance.`,
+          customerId: existingOrder.customer_id,
+          notificationKey: `order-status:${id}:cancelled`,
+          orderId: id,
+          orderNumber: existingOrder.order_number,
+          title: "Order cancelled",
+          type: "order_status",
+        }).catch((notificationError) => {
+          console.error("Unable to send mobile order cancellation notification:", notificationError);
+        });
       }
     } else if (body.action === "fulfillment") {
       if (body.status !== "shipped" && body.status !== "delivered") {

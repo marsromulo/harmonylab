@@ -13,6 +13,7 @@ import {
 } from "@/lib/orders";
 import {
   updateOrderFulfillmentAction,
+  updateOrderPaymentStatusAction,
   updateReferralPayoutStatusAction,
 } from "../actions";
 
@@ -33,11 +34,15 @@ type AdminOrderDetailPageProps = {
 
 const errorMessages: Record<string, string> = {
   "fulfillment-update-failed": "Unable to update fulfillment details.",
+  "payment-status-paid-locked": "A paid order cannot be changed back to unpaid. Use Cancelled when needed.",
+  "payment-status-stock-failed": "Payment could not be marked paid because one or more products do not have enough inventory.",
+  "payment-status-update-failed": "Unable to update the payment status.",
   "referral-status-update-failed": "Unable to update the referral payout status.",
 };
 
 const successMessages: Record<string, string> = {
   "fulfillment-updated": "Fulfillment details updated.",
+  "payment-status-updated": "Payment status updated.",
   "referral-status-updated": "Referral payout status updated.",
 };
 
@@ -93,7 +98,36 @@ export default async function AdminOrderDetailPage({ params, searchParams }: Adm
             </div>
             <div>
               <dt>Payment status</dt>
-              <dd>{order.paymentStatus}</dd>
+              <dd>
+                <form
+                  action={updateOrderPaymentStatusAction.bind(null, order.id)}
+                  className="admin-referral-status-form"
+                >
+                  <select
+                    aria-label="Payment status"
+                    defaultValue={
+                      order.paymentStatus === "cancelled"
+                        ? "cancelled"
+                        : order.paymentStatus === "paid"
+                          ? "paid"
+                          : "unpaid"
+                    }
+                    name="payment_status"
+                  >
+                    <option value="unpaid">Unpaid</option>
+                    <option value="paid">Paid</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                  <button className="admin-btn" type="submit">
+                    Save
+                  </button>
+                </form>
+                {order.paymentStatus === "paid" ? (
+                  <small className="admin-payment-status-note">
+                    Cancelling does not restore inventory or reverse referral points.
+                  </small>
+                ) : null}
+              </dd>
             </div>
             <div>
               <dt>Payment provider</dt>

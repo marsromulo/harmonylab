@@ -3461,6 +3461,15 @@ body {
   padding: 0 16px;
 }
 
+.admin-payment-status-note {
+  color: var(--admin-muted);
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: 7px;
+  max-width: 300px;
+}
+
 .admin-detail-form label {
   color: #2a2a2a;
   display: grid;

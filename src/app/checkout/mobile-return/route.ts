@@ -1,8 +1,9 @@
 import { getSafeMobileReturnUrl } from "@/lib/mobile-checkout-return";
-import { getSiteUrl } from "@/lib/wonder";
 import { verifyAndCompleteWonderPayment } from "@/lib/wonder-payment";
 
 export const runtime = "nodejs";
+
+const DEFAULT_MOBILE_RETURN_URL = "harmonylab:///checkout-complete";
 
 function redirectResponse(url: URL) {
   return new Response(null, {
@@ -17,20 +18,9 @@ function redirectResponse(url: URL) {
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const orderNumber = requestUrl.searchParams.get("order") ?? "";
-  const returnUrl = getSafeMobileReturnUrl(requestUrl.searchParams.get("return_url"));
-
-  if (!returnUrl) {
-    const fallback = new URL(
-      "/checkout?error=payment-cancelled",
-      getSiteUrl(),
-    );
-
-    if (orderNumber) {
-      fallback.searchParams.set("order", orderNumber);
-    }
-
-    return redirectResponse(fallback);
-  }
+  const returnUrl =
+    getSafeMobileReturnUrl(requestUrl.searchParams.get("return_url")) ??
+    new URL(DEFAULT_MOBILE_RETURN_URL);
 
   returnUrl.searchParams.set("order", orderNumber);
 
