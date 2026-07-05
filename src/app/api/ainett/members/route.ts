@@ -16,12 +16,8 @@ export async function POST(request: Request) {
   const expectedSecret = process.env.AINETT_MEMBER_SYNC_SECRET;
   const submittedSecret = request.headers.get("x-ainett-secret");
 
-  if (!expectedSecret) {
-    return Response.json({ ok: false, error: "Server secret missing" }, { status: 500 });
-  }
-
-  if ((submittedSecret ?? "").trim() !== expectedSecret.trim()) {
-    return Response.json({ ok: false, error: "Wrong secret" }, { status: 401 });
+  if (!expectedSecret || (submittedSecret ?? "").trim() !== expectedSecret.trim()) {
+    return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
   let body: Record<string, unknown>;
