@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { notifyAinettOrderReward } from "@/lib/ainett-order-rewards";
 import { markCheckoutOrderPaid } from "@/lib/checkout";
 import { sendPaidOrderEmails } from "@/lib/order-email";
 import {
@@ -34,7 +35,13 @@ export async function POST(request: Request) {
 
     if (session.payment_status === "paid") {
       try {
-        await markCheckoutOrderPaid(session);
+        const orderId = await markCheckoutOrderPaid(session);
+
+        if (orderId) {
+          notifyAinettOrderReward(orderId).catch((rewardError) => {
+            console.error("AI.NETT order reward notification failed:", rewardError);
+          });
+        }
         await sendPaidOrderEmails(session.id);
         await Promise.all([
           notifyAdminsOrderPaid(session.id),

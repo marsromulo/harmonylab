@@ -1,3 +1,4 @@
+import { notifyAinettOrderReward } from "@/lib/ainett-order-rewards";
 import { markWonderOrderPaid } from "@/lib/checkout";
 import { sendPaidOrderEmailsForOrder } from "@/lib/order-email";
 import {
@@ -14,6 +15,7 @@ export async function completeWonderPayment(wonderOrder: WonderOrder) {
   }
 
   const results = await Promise.allSettled([
+    notifyAinettOrderReward(orderId),
     sendPaidOrderEmailsForOrder(orderId),
     notifyAdminsOrderPaidForOrder(orderId),
     notifyCustomerOrderPaidForOrder(orderId),

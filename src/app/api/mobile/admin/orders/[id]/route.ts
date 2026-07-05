@@ -1,3 +1,4 @@
+import { notifyAinettOrderReward } from "@/lib/ainett-order-rewards";
 import { getMobileAdmin, getRequiredString, mobileJson, mobileOptions } from "@/lib/mobile-api";
 import { sendPaidOrderEmailsForOrder } from "@/lib/order-email";
 import {
@@ -145,6 +146,7 @@ export async function PATCH(
 
       if (paymentStatus === "paid" && existingOrder.payment_status !== "paid") {
         const results = await Promise.allSettled([
+          notifyAinettOrderReward(id),
           sendPaidOrderEmailsForOrder(id),
           notifyAdminsOrderPaidForOrder(id),
           notifyCustomerOrderPaidForOrder(id),

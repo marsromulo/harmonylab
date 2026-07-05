@@ -291,5 +291,5 @@ export async function markCheckoutOrderPaid(session: Stripe.Checkout.Session) {
     );
   }
 
-  return true;
+  return data.id;
 }
