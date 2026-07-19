@@ -23,9 +23,9 @@ export const metadata: Metadata = {
   title: "Harmony Lab",
   description: "Vitamin C skincare essentials for radiant everyday skin.",
   icons: {
-    icon: "/icon.png",
-    shortcut: "/icon.png",
-    apple: "/icon.png",
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
   },
 };
 
