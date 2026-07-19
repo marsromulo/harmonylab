@@ -2,11 +2,11 @@ import { connection } from "next/server";
 import { ProductCard } from "@/components/ProductCard";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { getFeaturedProducts } from "@/lib/products";
+import { getProducts } from "@/lib/products";
 
 export default async function ProductsPage() {
   await connection();
-  const products = await getFeaturedProducts();
+  const products = await getProducts();
 
   return (
     <div className="page">

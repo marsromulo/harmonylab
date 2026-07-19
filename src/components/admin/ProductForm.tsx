@@ -13,6 +13,13 @@ type ProductFormProps = {
 };
 
 const MAX_IMAGES = 8;
+const MAX_IMAGE_SIZE_MB = 10;
+const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+const TARGET_IMAGE_SIZE_BYTES = 9.5 * 1024 * 1024;
+const MAX_IMAGE_DIMENSION = 2000;
+const COMPRESSED_IMAGE_TYPE = "image/jpeg";
+const IMAGE_QUALITY_STEPS = [0.82, 0.72, 0.62, 0.52];
+const IMAGE_SCALE_STEPS = [1, 0.85, 0.7, 0.55];
 
 function slugify(value: string) {
   return value
@@ -23,13 +30,119 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+function formatFileSize(bytes: number) {
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getJpegFileName(fileName: string) {
+  const baseName = fileName.replace(/\.[^.]+$/, "") || "product-image";
+  return `${baseName}.jpg`;
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("Unable to compress image."));
+        }
+      },
+      type,
+      quality,
+    );
+  });
+}
+
+async function compressImageFile(file: File) {
+  if (file.type === "image/gif" || file.type === "image/svg+xml") {
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      throw new Error(`${file.name} is ${formatFileSize(file.size)}. Product images must be ${MAX_IMAGE_SIZE_MB} MB or smaller.`);
+    }
+
+    return file;
+  }
+
+  let image: ImageBitmap;
+
+  try {
+    image = await createImageBitmap(file);
+  } catch {
+    if (file.size <= MAX_IMAGE_SIZE_BYTES) {
+      return file;
+    }
+
+    throw new Error(`${file.name} could not be compressed. Product images must be ${MAX_IMAGE_SIZE_MB} MB or smaller.`);
+  }
+
+  const baseScale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(image.width, image.height));
+  let bestBlob: Blob | null = null;
+
+  try {
+    for (const scaleStep of IMAGE_SCALE_STEPS) {
+      const scale = baseScale * scaleStep;
+      const width = Math.max(1, Math.round(image.width * scale));
+      const height = Math.max(1, Math.round(image.height * scale));
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+
+      if (!context) {
+        throw new Error("Unable to prepare image compression.");
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, width, height);
+      context.drawImage(image, 0, 0, width, height);
+
+      for (const quality of IMAGE_QUALITY_STEPS) {
+        const blob = await canvasToBlob(canvas, COMPRESSED_IMAGE_TYPE, quality);
+
+        if (!bestBlob || blob.size < bestBlob.size) {
+          bestBlob = blob;
+        }
+
+        if (blob.size <= TARGET_IMAGE_SIZE_BYTES) {
+          const compressedFile = new File([blob], getJpegFileName(file.name), {
+            type: COMPRESSED_IMAGE_TYPE,
+            lastModified: Date.now(),
+          });
+
+          return file.size <= MAX_IMAGE_SIZE_BYTES && file.size <= compressedFile.size ? file : compressedFile;
+        }
+      }
+    }
+  } finally {
+    image.close();
+  }
+
+  if (file.size <= MAX_IMAGE_SIZE_BYTES && (!bestBlob || file.size <= bestBlob.size)) {
+    return file;
+  }
+
+  if (bestBlob && bestBlob.size <= MAX_IMAGE_SIZE_BYTES) {
+    return new File([bestBlob], getJpegFileName(file.name), {
+      type: COMPRESSED_IMAGE_TYPE,
+      lastModified: Date.now(),
+    });
+  }
+
+  throw new Error(`${file.name} could not be compressed below ${MAX_IMAGE_SIZE_MB} MB. Please use a smaller image.`);
+}
+
 export function ProductForm({ action, product, mode, nextSortOrder }: ProductFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [productName, setProductName] = useState(product?.name ?? "");
   const [slug, setSlug] = useState(product?.slug ?? "");
+  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(mode === "edit");
   const [currentImages, setCurrentImages] = useState<StoreProductImage[]>(product?.images ?? []);
   const [deletedImageIds, setDeletedImageIds] = useState<string[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const selectedFilesRef = useRef<File[]>([]);
+  const [isCompressingImages, setIsCompressingImages] = useState(false);
+  const [imageUploadMessage, setImageUploadMessage] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [draggedCurrentImageIndex, setDraggedCurrentImageIndex] = useState<number | null>(null);
   const [draggedPreviewIndex, setDraggedPreviewIndex] = useState<number | null>(null);
@@ -43,33 +156,71 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
   }, [previewUrls]);
 
   function syncInputFiles(files: File[]) {
-    if (!fileInputRef.current) {
-      setSelectedFiles(files);
-      return;
+    if (fileInputRef.current) {
+      const dataTransfer = new DataTransfer();
+      files.forEach((file) => dataTransfer.items.add(file));
+      fileInputRef.current.files = dataTransfer.files;
     }
 
-    const dataTransfer = new DataTransfer();
-    files.forEach((file) => dataTransfer.items.add(file));
-    fileInputRef.current.files = dataTransfer.files;
+    selectedFilesRef.current = files;
     setSelectedFiles(files);
   }
 
-  function addFiles(files: File[]) {
+  async function addFiles(files: File[]) {
     const imageFiles = files.filter((file) => file.type.startsWith("image/"));
-    const nextFiles = [...selectedFiles, ...imageFiles].filter(
-      (file, index, allFiles) =>
-        index ===
-        allFiles.findIndex(
-          (candidate) =>
-            candidate.name === file.name && candidate.size === file.size && candidate.lastModified === file.lastModified,
-        ),
-    );
+    const oversizedFile = imageFiles.find((file) => file.size > MAX_IMAGE_SIZE_BYTES);
+    const availableSlots = MAX_IMAGES - selectedFilesRef.current.length;
 
-    syncInputFiles(nextFiles.slice(0, MAX_IMAGES));
+    if (oversizedFile) {
+      setImageUploadMessage(
+        `${oversizedFile.name} is ${formatFileSize(oversizedFile.size)}. Product images must be ${MAX_IMAGE_SIZE_MB} MB or smaller.`,
+      );
+      return;
+    }
+
+    if (availableSlots <= 0) {
+      setImageUploadMessage(`You can upload up to ${MAX_IMAGES} images.`);
+      return;
+    }
+
+    setIsCompressingImages(true);
+    setImageUploadMessage("");
+
+    try {
+      const compressedFiles = await Promise.all(imageFiles.slice(0, availableSlots).map((file) => compressImageFile(file)));
+      const nextFiles = [...selectedFilesRef.current, ...compressedFiles].filter(
+        (file, index, allFiles) =>
+          index ===
+          allFiles.findIndex(
+            (candidate) =>
+              candidate.name === file.name && candidate.size === file.size && candidate.lastModified === file.lastModified,
+          ),
+      );
+
+      syncInputFiles(nextFiles.slice(0, MAX_IMAGES));
+
+      const compressedCount = compressedFiles.filter((file, index) => file !== imageFiles[index]).length;
+      const skippedCount = imageFiles.length - compressedFiles.length;
+
+      if (compressedCount || skippedCount) {
+        setImageUploadMessage(
+          [
+            compressedCount ? `${compressedCount} image${compressedCount === 1 ? "" : "s"} compressed before upload.` : "",
+            skippedCount ? `${skippedCount} image${skippedCount === 1 ? "" : "s"} skipped because the limit is ${MAX_IMAGES}.` : "",
+          ]
+            .filter(Boolean)
+            .join(" "),
+        );
+      }
+    } catch (error) {
+      setImageUploadMessage(error instanceof Error ? error.message : "Unable to compress the selected image.");
+    } finally {
+      setIsCompressingImages(false);
+    }
   }
 
   function removeFile(indexToRemove: number) {
-    syncInputFiles(selectedFiles.filter((_, index) => index !== indexToRemove));
+    syncInputFiles(selectedFilesRef.current.filter((_, index) => index !== indexToRemove));
   }
 
   function reorderFiles(fromIndex: number, toIndex: number) {
@@ -78,7 +229,7 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
       return;
     }
 
-    const nextFiles = [...selectedFiles];
+    const nextFiles = [...selectedFilesRef.current];
     const [movedFile] = nextFiles.splice(fromIndex, 1);
     nextFiles.splice(toIndex, 0, movedFile);
     syncInputFiles(nextFiles);
@@ -104,7 +255,16 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
   }
 
   return (
-    <form action={action} className="admin-product-form">
+    <form
+      action={action}
+      className="admin-product-form"
+      onSubmit={(event) => {
+        if (isCompressingImages) {
+          event.preventDefault();
+          setImageUploadMessage("Please wait for image compression to finish before saving.");
+        }
+      }}
+    >
       {currentImages.map((image) => (
         <input key={image.id} name="existing_image_order" type="hidden" value={image.id} />
       ))}
@@ -119,12 +279,14 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
             name="name"
             required
             value={productName}
-            onBlur={() => {
-              if (!slug.trim()) {
-                setSlug(slugify(productName));
+            onChange={(event) => {
+              const nextName = event.currentTarget.value;
+              setProductName(nextName);
+
+              if (!isSlugManuallyEdited) {
+                setSlug(slugify(nextName));
               }
             }}
-            onChange={(event) => setProductName(event.currentTarget.value)}
           />
         </label>
         <label>
@@ -133,7 +295,12 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
             name="slug"
             placeholder="auto-filled from product name"
             value={slug}
-            onChange={(event) => setSlug(event.currentTarget.value)}
+            onBlur={() => setSlug(slugify(slug || productName))}
+            onChange={(event) => {
+              const nextSlug = event.currentTarget.value;
+              setSlug(nextSlug);
+              setIsSlugManuallyEdited(nextSlug.trim().length > 0);
+            }}
           />
         </label>
         <label>
@@ -233,17 +400,8 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
         </div>
       ) : null}
 
-      <div
+      <label
         className={isDragging ? "admin-image-dropzone dragging" : "admin-image-dropzone"}
-        role="button"
-        tabIndex={0}
-        onClick={() => fileInputRef.current?.click()}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            fileInputRef.current?.click();
-          }
-        }}
         onDragEnter={(event) => {
           event.preventDefault();
           setIsDragging(true);
@@ -269,11 +427,16 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
           type="file"
           accept="image/*"
           multiple
-          onChange={(event) => addFiles(Array.from(event.currentTarget.files ?? []))}
+          onChange={(event) => {
+            void addFiles(Array.from(event.currentTarget.files ?? []));
+            event.currentTarget.value = "";
+          }}
         />
-        <strong>Drop product images here</strong>
-        <span>or click to upload up to {MAX_IMAGES} images</span>
-      </div>
+        <strong>{isCompressingImages ? "Compressing images..." : "Drop product images here"}</strong>
+        <span>or click to upload up to {MAX_IMAGES} images, {MAX_IMAGE_SIZE_MB} MB each</span>
+      </label>
+
+      {imageUploadMessage ? <p className="admin-image-upload-message">{imageUploadMessage}</p> : null}
 
       {selectedFiles.length ? (
         <div className="admin-image-preview-grid">
@@ -333,7 +496,7 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
         <Link className="admin-secondary-link" href="/admin/products">
           Cancel
         </Link>
-        <button className="admin-btn" type="submit">
+        <button className="admin-btn" type="submit" disabled={isCompressingImages}>
           {mode === "create" ? "Create Product" : "Save Changes"}
         </button>
       </div>

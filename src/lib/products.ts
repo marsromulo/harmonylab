@@ -175,25 +175,25 @@ function mapProductRow(product: ProductRow): StoreProduct {
   };
 }
 
-export async function getProducts(limit = 100): Promise<StoreProduct[]> {
+export async function getProducts(limit?: number): Promise<StoreProduct[]> {
   try {
     const supabase = createSupabaseServerClient();
-    const productsResult = await supabase
+    const productsQuery = supabase
       .from("products")
       .select(productSelect)
       .eq("is_active", true)
-      .order("sort_order", { ascending: true })
-      .limit(limit);
+      .order("sort_order", { ascending: true });
+    const productsResult = typeof limit === "number" ? await productsQuery.limit(limit) : await productsQuery;
     let products = productsResult.data as ProductRow[] | null;
     let productsError = productsResult.error;
 
     if (productsError) {
-      const retry = await supabase
+      const retryQuery = supabase
         .from("products")
         .select(baseProductSelect)
         .eq("is_active", true)
-        .order("sort_order", { ascending: true })
-        .limit(limit);
+        .order("sort_order", { ascending: true });
+      const retry = typeof limit === "number" ? await retryQuery.limit(limit) : await retryQuery;
 
       products = retry.data as ProductRow[] | null;
       productsError = retry.error;
@@ -201,18 +201,18 @@ export async function getProducts(limit = 100): Promise<StoreProduct[]> {
 
     if (productsError) {
       console.warn("Supabase products query failed, using fallback products:", productsError.message);
-      return fallbackProducts.slice(0, limit);
+      return typeof limit === "number" ? fallbackProducts.slice(0, limit) : fallbackProducts;
     }
 
     if (!products || products.length === 0) {
-      return fallbackProducts.slice(0, limit);
+      return typeof limit === "number" ? fallbackProducts.slice(0, limit) : fallbackProducts;
     }
 
     return products.map(mapProductRow);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.warn("Unable to load Supabase products, using fallback products:", message);
-    return fallbackProducts.slice(0, limit);
+    return typeof limit === "number" ? fallbackProducts.slice(0, limit) : fallbackProducts;
   }
 }
 

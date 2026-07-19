@@ -6,7 +6,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 
 const PRODUCT_IMAGE_BUCKET = "product-images";
 const MAX_IMAGES_PER_SUBMISSION = 8;
-const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 
 type AdminSupabaseClient = Awaited<ReturnType<typeof requireAdmin>>["supabase"];
 type ProductImageInsertRow = {
@@ -168,7 +168,7 @@ function getImageFiles(formData: FormData) {
     }
 
     if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      throw new Error("Each product image must be 5MB or smaller.");
+      throw new Error("Each product image must be 10MB or smaller.");
     }
   });
 

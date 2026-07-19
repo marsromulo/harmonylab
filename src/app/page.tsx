@@ -1,178 +1,225 @@
 import Image from "next/image";
 import Link from "next/link";
+import { AddToCartForm } from "@/components/AddToCartForm";
+import { ProductSlider } from "@/components/ProductSlider";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { getFeaturedProducts, getProductDescriptionPreview } from "@/lib/products";
+import { formatProductPrice, getFeaturedProducts } from "@/lib/products";
+
+function ValueIcon({ type }: { type: "leaf" | "skin" | "sparkles" | "heart" }) {
+  if (type === "leaf") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 19c11 0 14-7 14-14C11 5 5 10 5 19Z" />
+        <path d="M5 19c4-6 8-9 14-14" />
+      </svg>
+    );
+  }
+
+  if (type === "skin") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3c-4 3-6 6-6 10a6 6 0 0 0 12 0c0-4-2-7-6-10Z" />
+        <path d="M9 14c1.7 1.4 4.3 1.4 6 0" />
+      </svg>
+    );
+  }
+
+  if (type === "sparkles") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3c1.2 4 2.2 5 6 6-3.8 1-4.8 2-6 6-1.2-4-2.2-5-6-6 3.8-1 4.8-2 6-6Z" />
+        <path d="M19 14c.6 2 1.1 2.5 3 3-1.9.5-2.4 1-3 3-.6-2-1.1-2.5-3-3 1.9-.5 2.4-1 3-3Z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.7A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" />
+    </svg>
+  );
+}
+
+const concernCards = [
+  {
+    className: "concern-card--lavender",
+    image: "/new-design/assets/product_01.png",
+    title: "Anti-Aging & Renewal",
+    icon: "sparkles",
+  },
+  {
+    className: "concern-card--pink",
+    image: "/new-design/assets/product_02.png",
+    title: "Brightening & Even Tone",
+    icon: "skin",
+  },
+  {
+    className: "concern-card--gold",
+    image: "/new-design/assets/product_03.png",
+    title: "Hydration & Glow",
+    icon: "sparkles",
+  },
+  {
+    className: "concern-card--mint",
+    image: "/new-design/assets/product_04.png",
+    title: "Skin Barrier & Care",
+    icon: "heart",
+  },
+] as const;
 
 export default async function Home() {
-  const products = await getFeaturedProducts(3);
+  const products = await getFeaturedProducts(8);
+
   return (
-    <div className="page layout3-page">
+    <div className="page new-design-page">
       <SiteHeader active="home" />
 
       <main>
-        <section className="layout3-hero">
-          <div className="layout3-hero-copy">
-            <p className="layout3-eyebrow">Vitamin C Skincare</p>
-            <h1>
-              Glow Naturally,
-              <br />
-              <span>Everyday.</span>
-            </h1>
-            <p className="layout3-lead">
-              Brightening skincare essentials infused with Vitamin C to reveal a healthier, radiant you.
-            </p>
-            <Link className="layout3-btn" href="/products">
-              SHOP NOW <span>→</span>
-            </Link>
-            <div className="layout3-hero-icons">
-              <div className="layout3-hero-icon">
-                <svg viewBox="0 0 48 48" aria-hidden="true">
-                  <path d="M24 5v38M5 24h38" />
-                  <path d="M24 11c4 8 5 9 13 13-8 4-9 5-13 13-4-8-5-9-13-13 8-4 9-5 13-13Z" />
-                </svg>
-                <strong>Brighten</strong>
-                <span>
-                  Improve dull
-                  <br />
-                  skin
-                </span>
-              </div>
-              <div className="layout3-hero-icon">
-                <svg viewBox="0 0 48 48" aria-hidden="true">
-                  <path d="M24 5C15 17 11 24 11 31a13 13 0 0 0 26 0C37 24 33 17 24 5Z" />
-                </svg>
-                <strong>Hydrate</strong>
-                <span>
-                  Deep
-                  <br />
-                  moisture
-                </span>
-              </div>
-              <div className="layout3-hero-icon">
-                <svg viewBox="0 0 48 48" aria-hidden="true">
-                  <path d="M11 36c18 0 26-9 26-26-17 1-26 9-26 26Z" />
-                  <path d="M11 36c7-10 14-16 26-26" />
-                  <path d="M16 21C9 19 6 15 6 9c8 0 13 4 15 11" />
-                </svg>
-                <strong>Nourish</strong>
-                <span>
-                  Healthy
-                  <br />
-                  glowing skin
-                </span>
-              </div>
-              <div className="layout3-hero-icon">
-                <svg viewBox="0 0 48 48" aria-hidden="true">
-                  <path d="M24 6 39 12v12c0 10-6 16-15 20C15 40 9 34 9 24V12l15-6Z" />
-                  <path d="m17 25 5 5 10-12" />
-                </svg>
-                <strong>Protect</strong>
-                <span>
-                  Strengthen
-                  <br />
-                  skin barrier
-                </span>
+        <section className="new-hero">
+          <div className="store-container new-hero-inner">
+            <div className="new-hero-content">
+              <p className="new-eyebrow">Scientific skincare</p>
+              <h1>
+                Your Skin,
+                <br />
+                Our Harmony.
+              </h1>
+              <p className="new-hero-lead">Effective. Safe. Beautifully You.</p>
+              <p className="new-hero-desc">
+                Advanced formulations that nurture your skin and reveal its natural radiance every day.
+              </p>
+
+              <div className="new-hero-cta">
+                <Link className="new-btn new-btn-primary" href="/products">
+                  Shop Best Sellers
+                </Link>
+                <Link className="new-btn new-btn-secondary" href="#products">
+                  Explore All Products
+                </Link>
               </div>
             </div>
+            <div className="new-hero-visual" aria-hidden="true" />
           </div>
         </section>
 
-        <section className="layout3-products" aria-label="Featured products">
-          {products.map((product) => (
-            <article className="layout3-product-card" key={product.id}>
-              <Link href={`/products/${product.slug}`} aria-label={`View ${product.name}`} className="layout3-product-card-link">
-                <Image src={product.imageUrl} alt={product.name} width={500} height={360} />
-              </Link>
-              <div className="layout3-product-info">
-                <p className="layout3-eyebrow">{product.name}</p>
-                <h2>
-                  <Link href={`/products/${product.slug}`}>{product.name}</Link>
-                </h2>
-                <p>{getProductDescriptionPreview(product.description)}</p>
-              </div>
+        <section className="value-strip" aria-label="Store benefits">
+          <div className="store-container value-strip-inner">
+            <article className="value-item">
+              <span className="value-icon">
+                <ValueIcon type="leaf" />
+              </span>
+              <h3>Clean & Safe Ingredients</h3>
             </article>
-          ))}
+            <article className="value-item">
+              <span className="value-icon">
+                <ValueIcon type="skin" />
+              </span>
+              <h3>Suitable for All Skin Types</h3>
+            </article>
+            <article className="value-item">
+              <span className="value-icon">
+                <ValueIcon type="sparkles" />
+              </span>
+              <h3>Visible Results You Can Feel</h3>
+            </article>
+            <article className="value-item">
+              <span className="value-icon">
+                <ValueIcon type="heart" />
+              </span>
+              <h3>Trusted by Many</h3>
+            </article>
+          </div>
         </section>
 
-        <section className="layout3-benefits">
-          <div className="layout3-benefit">
-            <div>
-              <svg viewBox="0 0 48 48" aria-hidden="true">
-                <circle cx="24" cy="24" r="15" />
-                <circle cx="24" cy="24" r="9" />
-              </svg>
-              <h3>Brightening</h3>
-              <p>
-                Vitamin C helps improve
+        <section className="new-section section-concerns">
+          <div className="store-container concerns-layout">
+            <div className="section-copy">
+              <p className="section-label">Shop by concern</p>
+              <h2>
+                Find What
                 <br />
-                dull skin and uneven tone.
-              </p>
+                Your Skin Needs
+              </h2>
+              <p>Target your skincare goals with our gentle yet effective formulas.</p>
+              <Link className="text-link" href="/products">
+                View All Products
+              </Link>
             </div>
-          </div>
-          <div className="layout3-benefit">
-            <div>
-              <svg viewBox="0 0 48 48" aria-hidden="true">
-                <path d="M24 10c-5 0-9 4-9 9 0 4 3 7 6 8-4 1-8 4-8 9 0 6 6 8 11 3 5 5 11 3 11-3 0-5-4-8-8-9 3-1 6-4 6-8 0-5-4-9-9-9Z" />
-                <path d="M24 28v14" />
-              </svg>
-              <h3>Hydrating</h3>
-              <p>
-                Deep hydration for
-                <br />
-                soft and supple skin.
-              </p>
-            </div>
-          </div>
-          <div className="layout3-benefit">
-            <div>
-              <svg viewBox="0 0 48 48" aria-hidden="true">
-                <path d="M24 5 39 24 24 43 9 24 24 5Z" />
-              </svg>
-              <h3>Anti-Aging</h3>
-              <p>
-                Reduce the look of fine lines
-                <br />
-                and wrinkles.
-              </p>
-            </div>
-          </div>
-          <div className="layout3-benefit flower">
-            <div>
-              <svg viewBox="0 0 48 48" aria-hidden="true">
-                <path d="M23 5c4 7 4 11 0 18-4-7-4-11 0-18Zm0 38c-4-7-4-11 0-18 4 7 4 11 0 18Zm20-20c-7 4-11 4-18 0 7-4 11-4 18 0ZM5 23c7-4 11-4 18 0-7 4-11 4-18 0Z" />
-              </svg>
-              <h3>Gentle Formula</h3>
-              <p>
-                Suitable for all skin types,
-                <br />
-                even sensitive skin.
-              </p>
+
+            <div className="concern-grid">
+              {concernCards.map((card) => (
+                <article className={`concern-card ${card.className}`} key={card.title}>
+                  <div className="concern-card-media">
+                    <Image src={card.image} alt="" width={330} height={420} />
+                  </div>
+                  <div className="concern-card-content">
+                    <span className="concern-card-icon">
+                      <ValueIcon type={card.icon} />
+                    </span>
+                    <h3>{card.title}</h3>
+                    <Link href="/products">Shop Now</Link>
+                  </div>
+                </article>
+              ))}
             </div>
           </div>
         </section>
 
-        <section className="layout3-about">
-          <Image
-            src="/layout3/about-us-banner.png"
-            alt="Harmony Lab Vitamin C skincare collection"
-            width={1657}
-            height={949}
-          />
-          <div className="layout3-about-text">
-            <p className="layout3-eyebrow">About Harmony Lab</p>
-            <h2>
-              Skincare that cares
-              <br />
-              for your natural beauty.
-            </h2>
-            <p>
-              At Harmony Lab, we believe healthy, radiant skin starts with high-quality ingredients and the right care.
-              Our Vitamin C collection is specially formulated to brighten, hydrate, and protect your skin every day.
-            </p>
-            <Link className="layout3-btn layout3-outline-btn" href="/products">
-              LEARN MORE
-            </Link>
+        <section className="new-section section-products" id="products">
+          <div className="store-container">
+            <div className="section-head">
+              <div>
+                <p className="section-label">Best sellers</p>
+                <h2>Our Products</h2>
+              </div>
+              <Link className="text-link" href="/products">
+                View All Best Sellers
+              </Link>
+            </div>
+
+            <ProductSlider>
+              {products.map((product, index) => (
+                <article className="product-card" key={product.id}>
+                  <Link className="product-card-media" href={`/products/${product.slug}`} aria-label={`View ${product.name}`}>
+                    {index === 0 ? <span className="pill pill-purple">Bestseller</span> : null}
+                    <Image src={product.imageUrl} alt={product.name} width={420} height={390} />
+                  </Link>
+                  <div className="product-card-content">
+                    <h3>
+                      <Link href={`/products/${product.slug}`}>{product.name}</Link>
+                    </h3>
+                    <div className="rating" aria-label="Five star rating">
+                      5.0 <span>({128 - index * 9})</span>
+                    </div>
+                    <div className="product-card-meta">
+                      <strong>{formatProductPrice(product)}</strong>
+                      <AddToCartForm buttonClassName="new-cart-button" productId={product.id} />
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </ProductSlider>
+          </div>
+        </section>
+
+        <section className="new-section section-about">
+          <div className="store-container about-grid">
+            <div className="section-copy about-copy">
+              <p className="section-label">About Harmony Lab</p>
+              <h2>
+                Skincare that Works
+                <br />
+                in Harmony with You
+              </h2>
+              <p>
+                We blend advanced science with nature&apos;s best ingredients to create skincare that is safe,
+                effective, and made for real results.
+              </p>
+              <Link className="text-link" href="/products">
+                Learn Our Story
+              </Link>
+            </div>
           </div>
         </section>
       </main>

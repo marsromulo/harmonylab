@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harmony Lab – Premium Skincare</title>
+  <meta name="description" content="Premium skincare homepage concept for Harmony Lab.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="topbar">
+    <div class="container topbar__inner">
+      <p>✨ Discover science-backed skincare for every skin type. Gentle, effective, and made for you.</p>
+      <div class="topbar__meta">
+        <span>Free Shipping over HKD500</span>
+      </div>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <div class="container header__inner">
+      <a class="brand" href="#">
+        <img src="assets/harmony_lab_logo_final.png" alt="Harmony Lab logo">
+        <span class="sr-only">Harmony Lab</span>
+      </a>
+
+      <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-hidden="true">
+      <label for="nav-toggle" class="nav-toggle-label" aria-label="Toggle navigation">
+        <span></span>
+        <span></span>
+        <span></span>
+      </label>
+
+      <nav class="main-nav" aria-label="Primary navigation">
+        <a href="#" class="is-active">Home</a>
+        <a href="#shop">Shop</a>
+        <a href="#about">About Us</a>
+        <a href="#ingredients">Ingredients</a>
+        <a href="#blog">Blog</a>
+        <a href="#contact">Contact</a>
+      </nav>
+
+      <div class="header-actions" aria-label="Quick actions">
+        <a href="#" aria-label="Search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </a>
+        <a href="#" aria-label="Account">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 10-16 0m12-11a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        </a>
+        <a href="#" aria-label="Shopping bag" class="cart-link">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7zm3 0a3 3 0 116 0"/></svg>
+          <span class="cart-count">0</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero__inner">
+        <div class="hero__content">
+          <p class="eyebrow">Scientific skincare • Gentle by nature</p>
+          <h1>Your Skin, <br>Our Harmony.</h1>
+          <p class="hero__lead">Effective. Safe. Beautifully You.</p>
+          <p class="hero__desc">Advanced formulations that nurture your skin and reveal its natural radiance—every day.</p>
+
+          <div class="hero__cta">
+            <a href="#shop" class="btn btn--primary">Shop Best Sellers</a>
+            <a href="#products" class="btn btn--secondary">Explore All Products</a>
+          </div>
+
+          <ul class="hero__badges">
+            <li>
+              <span class="icon-badge">✿</span>
+              <div>
+                <strong>Dermatologically</strong>
+                <span>Tested</span>
+              </div>
+            </li>
+            <li>
+              <span class="icon-badge">🐇</span>
+              <div>
+                <strong>Cruelty</strong>
+                <span>Free</span>
+              </div>
+            </li>
+            <li>
+              <span class="icon-badge">⚗</span>
+              <div>
+                <strong>Paraben &amp; Sulfate</strong>
+                <span>Free</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="hero__visual" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <section class="value-strip">
+      <div class="container value-strip__inner">
+        <article class="value-item">
+          <span class="value-icon">❋</span>
+          <div>
+            <h3>Clean &amp; Safe Ingredients</h3>
+          </div>
+        </article>
+        <article class="value-item">
+          <span class="value-icon">◌</span>
+          <div>
+            <h3>Suitable for All Skin Types</h3>
+          </div>
+        </article>
+        <article class="value-item">
+          <span class="value-icon">✦</span>
+          <div>
+            <h3>Visible Results You Can Feel</h3>
+          </div>
+        </article>
+        <article class="value-item">
+          <span class="value-icon">♡</span>
+          <div>
+            <h3>Trusted by Many</h3>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section section--concerns" id="shop">
+      <div class="container">
+        <div class="concerns-layout">
+          <div class="section-copy">
+            <p class="section-label">Shop by concern</p>
+            <h2>Find What <br>Your Skin Needs</h2>
+            <p>Target your skincare goals with our gentle yet effective formulas.</p>
+            <a href="#products" class="text-link">View All Products</a>
+          </div>
+
+          <div class="concern-grid">
+            <article class="concern-card concern-card--lavender">
+              <div class="concern-card__media">
+                <img src="assets/product_01.png" alt="Retinol serum category card">
+              </div>
+              <div class="concern-card__content">
+                <span class="concern-card__icon">✦</span>
+                <h3>Anti-Aging &amp; Renewal</h3>
+                <a href="#products">Shop Now</a>
+              </div>
+            </article>
+
+            <article class="concern-card concern-card--pink">
+              <div class="concern-card__media">
+                <img src="assets/product_02.png" alt="Niacinamide serum category card">
+              </div>
+              <div class="concern-card__content">
+                <span class="concern-card__icon">◔</span>
+                <h3>Brightening &amp; Even Tone</h3>
+                <a href="#products">Shop Now</a>
+              </div>
+            </article>
+
+            <article class="concern-card concern-card--gold">
+              <div class="concern-card__media">
+                <img src="assets/product_03.png" alt="Vitamin C serum category card">
+              </div>
+              <div class="concern-card__content">
+                <span class="concern-card__icon">☼</span>
+                <h3>Hydration &amp; Glow</h3>
+                <a href="#products">Shop Now</a>
+              </div>
+            </article>
+
+            <article class="concern-card concern-card--mint">
+              <div class="concern-card__media">
+                <img src="assets/product_04.png" alt="Skin barrier care category card">
+              </div>
+              <div class="concern-card__content">
+                <span class="concern-card__icon">⛨</span>
+                <h3>Skin Barrier &amp; Care</h3>
+                <a href="#products">Shop Now</a>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--products" id="products">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Best sellers</p>
+            <h2>Our Products</h2>
+          </div>
+          <a href="#" class="text-link">View All Best Sellers</a>
+        </div>
+
+        <div class="product-carousel" data-carousel>
+          <button class="product-arrow product-arrow--prev" type="button" aria-label="Show previous products" data-carousel-prev>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+
+          <div class="product-track" tabindex="0">
+            <article class="product-card">
+              <div class="product-card__media">
+                <span class="pill pill--purple">Bestseller</span>
+                <img src="assets/thumb-retinol.png" alt="Retinol Serum">
+              </div>
+              <div class="product-card__content">
+                <h3>Retinol Serum</h3>
+                <div class="rating">★★★★★ <span>(128)</span></div>
+                <div class="product-card__meta">
+                  <strong>RM129.00</strong>
+                  <button type="button" aria-label="Add Retinol Serum to cart">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7zm3 0a3 3 0 116 0"/></svg>
+                  </button>
+                </div>
+              </div>
+            </article>
+
+            <article class="product-card">
+              <div class="product-card__media">
+                <img src="assets/thumb-niacinamide.png" alt="Niacinamide Serum">
+              </div>
+              <div class="product-card__content">
+                <h3>Niacinamide Serum</h3>
+                <div class="rating">★★★★★ <span>(97)</span></div>
+                <div class="product-card__meta">
+                  <strong>RM119.00</strong>
+                  <button type="button" aria-label="Add Niacinamide Serum to cart">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7zm3 0a3 3 0 116 0"/></svg>
+                  </button>
+                </div>
+              </div>
+            </article>
+
+            <article class="product-card">
+              <div class="product-card__media">
+                <img src="assets/thumb-vitamin-c.png" alt="Vitamin C Serum">
+              </div>
+              <div class="product-card__content">
+                <h3>Vitamin C Serum</h3>
+                <div class="rating">★★★★★ <span>(86)</span></div>
+                <div class="product-card__meta">
+                  <strong>RM119.00</strong>
+                  <button type="button" aria-label="Add Vitamin C Serum to cart">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7zm3 0a3 3 0 116 0"/></svg>
+                  </button>
+                </div>
+              </div>
+            </article>
+
+            <article class="product-card">
+              <div class="product-card__media">
+                <img src="assets/thumb-rejuvenating.png" alt="Rejuvenating Cream">
+              </div>
+              <div class="product-card__content">
+                <h3>Rejuvenating Cream</h3>
+                <div class="rating">★★★★★ <span>(64)</span></div>
+                <div class="product-card__meta">
+                  <strong>RM109.00</strong>
+                  <button type="button" aria-label="Add Rejuvenating Cream to cart">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7zm3 0a3 3 0 116 0"/></svg>
+                  </button>
+                </div>
+              </div>
+            </article>
+
+            <article class="product-card">
+              <div class="product-card__media">
+                <span class="pill pill--purple pill--right">New</span>
+                <img src="assets/thumb-glass-set.png" alt="Glass Skincare Set">
+              </div>
+              <div class="product-card__content">
+                <h3>Glass Skincare Set</h3>
+                <div class="rating">★★★★★ <span>(42)</span></div>
+                <div class="product-card__meta">
+                  <strong>RM299.00</strong>
+                  <button type="button" aria-label="Add Glass Skincare Set to cart">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7zm3 0a3 3 0 116 0"/></svg>
+                  </button>
+                </div>
+              </div>
+            </article>
+
+            <article class="product-card">
+              <div class="product-card__media">
+                <img src="assets/rejuvenating-set.jpg" alt="Rejuvenating Set">
+              </div>
+              <div class="product-card__content">
+                <h3>Rejuvenating Set</h3>
+                <div class="rating">★★★★★ <span>(38)</span></div>
+                <div class="product-card__meta">
+                  <strong>RM259.00</strong>
+                  <button type="button" aria-label="Add Rejuvenating Set to cart">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7zm3 0a3 3 0 116 0"/></svg>
+                  </button>
+                </div>
+              </div>
+            </article>
+
+            <article class="product-card">
+              <div class="product-card__media">
+                <img src="assets/niacinamide-set.jpg" alt="Niacinamide Set">
+              </div>
+              <div class="product-card__content">
+                <h3>Niacinamide Set</h3>
+                <div class="rating">★★★★★ <span>(31)</span></div>
+                <div class="product-card__meta">
+                  <strong>RM239.00</strong>
+                  <button type="button" aria-label="Add Niacinamide Set to cart">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7zm3 0a3 3 0 116 0"/></svg>
+                  </button>
+                </div>
+              </div>
+            </article>
+
+            <article class="product-card">
+              <div class="product-card__media">
+                <img src="assets/melasma-set.jpg" alt="Melasma Care Set">
+              </div>
+              <div class="product-card__content">
+                <h3>Melasma Care Set</h3>
+                <div class="rating">★★★★★ <span>(26)</span></div>
+                <div class="product-card__meta">
+                  <strong>RM279.00</strong>
+                  <button type="button" aria-label="Add Melasma Care Set to cart">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7zm3 0a3 3 0 116 0"/></svg>
+                  </button>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <button class="product-arrow product-arrow--next" type="button" aria-label="Show next products" data-carousel-next>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--about" id="about">
+      <div class="container about-grid">
+        <div class="section-copy about-copy">
+          <p class="section-label">About Harmony Lab</p>
+          <h2>Skincare that Works <br>in Harmony with You</h2>
+          <p>We blend advanced science with nature’s best ingredients to create skincare that is safe, effective, and made for real results—so you can glow with confidence every day.</p>
+          <a href="#" class="text-link">Learn Our Story</a>
+
+          <div class="about-highlights">
+            <article>
+              <span>✿</span>
+              <h3>Safe Formulations</h3>
+            </article>
+            <article>
+              <span>⚗</span>
+              <h3>Dermatologically Tested</h3>
+            </article>
+            <article>
+              <span>🐇</span>
+              <h3>Cruelty Free</h3>
+            </article>
+            <article>
+              <span>♻</span>
+              <h3>Sustainable Choices</h3>
+            </article>
+          </div>
+        </div>
+
+        <div class="about-visual">
+          <div class="about-visual__frame">
+            <img src="assets/about-model.png" alt="Woman with glowing skin touching her face">
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="contact">
+    <div class="container footer__inner">
+      <div>
+        <a class="brand brand--footer" href="#">
+          <img src="assets/harmony_lab_logo_final.png" alt="Harmony Lab logo">
+        </a>
+        <p>Glow today, confident tomorrow.</p>
+      </div>
+
+      <div class="footer-links">
+        <a href="#shop">Shop</a>
+        <a href="#about">About</a>
+        <a href="#ingredients">Ingredients</a>
+        <a href="#blog">Blog</a>
+        <a href="#contact">Contact</a>
+      </div>
+
+      <p class="footer-copy">© 2026 Harmony Lab. Premium skincare concept.</p>
+    </div>
+  </footer>
+  <script>
+    document.querySelectorAll("[data-carousel]").forEach((carousel) => {
+      const track = carousel.querySelector(".product-track");
+      const prev = carousel.querySelector("[data-carousel-prev]");
+      const next = carousel.querySelector("[data-carousel-next]");
+
+      if (!track || !prev || !next) return;
+
+      const getStep = () => {
+        const card = track.querySelector(".product-card");
+        if (!card) return track.clientWidth;
+        const styles = window.getComputedStyle(track);
+        const gap = parseFloat(styles.columnGap || styles.gap) || 0;
+        return card.getBoundingClientRect().width + gap;
+      };
+
+      const updateButtons = () => {
+        const maxScroll = track.scrollWidth - track.clientWidth - 2;
+        prev.disabled = track.scrollLeft <= 2;
+        next.disabled = track.scrollLeft >= maxScroll;
+      };
+
+      prev.addEventListener("click", () => {
+        track.scrollBy({ left: -getStep(), behavior: "smooth" });
+      });
+
+      next.addEventListener("click", () => {
+        track.scrollBy({ left: getStep(), behavior: "smooth" });
+      });
+
+      track.addEventListener("scroll", updateButtons, { passive: true });
+      window.addEventListener("resize", updateButtons);
+      updateButtons();
+    });
+  </script>
+</body>
+</html>
