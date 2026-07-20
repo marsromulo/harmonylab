@@ -6115,9 +6115,7 @@ body {
 }
 
 .product-card-media img {
-  aspect-ratio: 1.08 / 1;
   height: auto;
-  object-fit: cover;
   width: 100%;
 }
 
