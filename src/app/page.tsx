@@ -94,9 +94,6 @@ export default async function Home() {
                 <Link className="new-btn new-btn-primary" href="/products">
                   Shop Best Sellers
                 </Link>
-                <Link className="new-btn new-btn-secondary" href="#products">
-                  Explore All Products
-                </Link>
               </div>
             </div>
             <div className="new-hero-visual" aria-hidden="true" />
@@ -150,9 +147,9 @@ export default async function Home() {
             <div className="concern-grid">
               {concernCards.map((card) => (
                 <article className={`concern-card ${card.className}`} key={card.title}>
-                  <div className="concern-card-media">
+                  <Link className="concern-card-media" href="/products" aria-label={`View products for ${card.title}`}>
                     <Image src={card.image} alt="" width={330} height={420} />
-                  </div>
+                  </Link>
                   <div className="concern-card-content">
                     <span className="concern-card-icon">
                       <ValueIcon type={card.icon} />
@@ -174,7 +171,7 @@ export default async function Home() {
                 <h2>Our Products</h2>
               </div>
               <Link className="text-link" href="/products">
-                View All Best Sellers
+                View All Products
               </Link>
             </div>
 

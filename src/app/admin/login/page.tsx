@@ -28,12 +28,11 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
     <main className="admin-login-page">
       <section className="admin-login-card">
         <Image
-          src="/hl-logo.png"
+          src="/new-design/assets/harmony_lab_logo_final.png"
           alt="Harmony Lab"
-          width={1154}
-          height={271}
+          width={634}
+          height={149}
           priority
-          unoptimized
         />
         <div>
           <p className="admin-eyebrow">ADMIN ACCESS</p>

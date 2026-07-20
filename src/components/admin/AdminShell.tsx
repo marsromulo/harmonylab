@@ -39,13 +39,12 @@ export async function AdminShell({ active, children }: AdminShellProps) {
     <div className="admin-page">
       <header className="admin-header">
         <Image
-          src="/hl-logo.png"
+          src="/new-design/assets/harmony_lab_logo_final.png"
           className="admin-logo"
           alt="Harmony Lab"
-          width={1154}
-          height={271}
+          width={634}
+          height={149}
           priority
-          unoptimized
         />
         <div className="admin-top-actions">
           <div className="admin-icon-circle">
