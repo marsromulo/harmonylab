@@ -1240,10 +1240,12 @@ body {
 }
 
 .account-form-link {
-  color: #234b3d;
+  color: #6d36af;
   font-size: 13px;
   font-weight: 700;
   justify-self: start;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .account-form-split {
