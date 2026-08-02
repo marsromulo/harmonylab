@@ -155,28 +155,19 @@ function getEmailLogoUrl() {
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
     "https://harmonylab-beauty.com";
 
-  return `${siteUrl}/email/harmony-lab-icon.png`;
+  return `${siteUrl}/new-design/assets/harmony_lab_logo_final.png`;
 }
 
 function getEmailShell(content: string, showLogo = false) {
   const header = showLogo
     ? `
-      <table role="presentation" style="border-collapse:collapse;margin-bottom:24px;">
-        <tr>
-          <td style="padding:0 12px 0 0;vertical-align:middle;">
-            <img
-              src="${escapeHtml(getEmailLogoUrl())}"
-              alt="Harmony Lab"
-              width="48"
-              height="48"
-              style="display:block;width:48px;height:48px;border:0;border-radius:8px;"
-            >
-          </td>
-          <td style="padding:0;vertical-align:middle;font-size:24px;font-weight:700;letter-spacing:1px;">
-            Harmony Lab
-          </td>
-        </tr>
-      </table>`
+      <img
+        src="${escapeHtml(getEmailLogoUrl())}"
+        alt="Harmony Lab"
+        width="220"
+        height="85"
+        style="display:block;width:220px;max-width:100%;height:auto;border:0;margin:0 0 24px;"
+      >`
     : `<div style="font-size:24px;font-weight:700;letter-spacing:1px;margin-bottom:24px;">HARMONY LAB</div>`;
 
   return `
