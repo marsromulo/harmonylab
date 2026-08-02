@@ -4,6 +4,7 @@ export type AdminMember = {
   id: string;
   firstName: string;
   lastName: string;
+  email: string | null;
   phone: string | null;
   referralCode: string;
   createdAt: string;
@@ -15,6 +16,7 @@ type MemberRow = {
   id: string;
   first_name: string;
   last_name: string;
+  email: string | null;
   phone: string | null;
   referral_code: string;
   created_at: string;
@@ -46,7 +48,7 @@ export type AdminMemberReferralOrder = {
   nucPoints: number;
 };
 
-const memberSelect = "id,first_name,last_name,phone,referral_code,created_at";
+const memberSelect = "id,first_name,last_name,email,phone,referral_code,created_at";
 
 type AdminSupabaseClient = Awaited<ReturnType<typeof requireAdmin>>["supabase"];
 
@@ -174,6 +176,7 @@ export async function getAdminMembers() {
     id: member.id,
     firstName: member.first_name,
     lastName: member.last_name,
+    email: member.email,
     phone: member.phone,
     referralCode: member.referral_code,
     createdAt: member.created_at,
@@ -203,6 +206,7 @@ export async function getAdminMemberDetails(memberId: string) {
       id: memberRow.id,
       firstName: memberRow.first_name,
       lastName: memberRow.last_name,
+      email: memberRow.email,
       phone: memberRow.phone,
       referralCode: memberRow.referral_code,
       createdAt: memberRow.created_at,

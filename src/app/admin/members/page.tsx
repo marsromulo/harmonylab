@@ -53,6 +53,7 @@ export default async function AdminMembersPage({ searchParams }: AdminMembersPag
             <thead>
               <tr>
                 <th>Member</th>
+                <th>Email</th>
                 <th>Phone No.</th>
                 <th>Referral Code</th>
                 <th>REF points</th>
@@ -67,6 +68,7 @@ export default async function AdminMembersPage({ searchParams }: AdminMembersPag
                       {getAdminMemberName(member)}
                     </Link>
                   </td>
+                  <td>{member.email ?? "Not provided"}</td>
                   <td>{member.phone ?? "Not provided"}</td>
                   <td>
                     <span className="admin-referral">{member.referralCode}</span>

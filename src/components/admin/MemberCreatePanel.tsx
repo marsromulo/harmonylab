@@ -39,6 +39,10 @@ export function MemberCreatePanel({ action, memberCount }: MemberCreatePanelProp
                 <input name="last_name" required />
               </label>
               <label>
+                Email
+                <input name="email" type="email" autoComplete="email" />
+              </label>
+              <label>
                 Phone No.
                 <input name="phone" type="tel" />
               </label>

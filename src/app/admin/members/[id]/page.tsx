@@ -74,6 +74,10 @@ export default async function AdminMemberDetailPage({ params, searchParams }: Ad
                 <input name="last_name" required defaultValue={member.lastName} />
               </label>
               <label>
+                Email
+                <input name="email" type="email" autoComplete="email" defaultValue={member.email ?? ""} />
+              </label>
+              <label>
                 Phone No.
                 <input name="phone" type="tel" defaultValue={member.phone ?? ""} />
               </label>

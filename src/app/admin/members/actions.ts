@@ -13,6 +13,10 @@ function normalizeReferralCode(value: string) {
   return value.replace(/[^\w-]/g, "").toUpperCase().slice(0, 40);
 }
 
+function normalizeEmail(value: string) {
+  return value.trim().toLowerCase().slice(0, 254);
+}
+
 function getMemberPayload(formData: FormData) {
   const firstName = getString(formData, "first_name");
   const lastName = getString(formData, "last_name");
@@ -25,6 +29,7 @@ function getMemberPayload(formData: FormData) {
   return {
     first_name: firstName,
     last_name: lastName,
+    email: normalizeEmail(getString(formData, "email")) || null,
     phone: getString(formData, "phone") || null,
     referral_code: referralCode,
   };
