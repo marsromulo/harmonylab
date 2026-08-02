@@ -1,10 +1,13 @@
 import { createSupabaseAuthServerClient, createSupabaseServerClient } from "@/lib/supabase/server";
+import { isCurrentUserMember } from "@/lib/member-pricing";
 
 export type StoreProduct = {
   id: string;
   name: string;
   slug: string;
   priceCents: number;
+  regularPriceCents: number;
+  memberPriceCents: number;
   currency: string;
   imageUrl: string;
   images: StoreProductImage[];
@@ -30,6 +33,8 @@ const fallbackProducts: StoreProduct[] = [
     name: "VC Brighten Travel Kit",
     slug: "vc-brighten-travel-kit",
     priceCents: 36000,
+    regularPriceCents: 36000,
+    memberPriceCents: 36000,
     currency: "HKD",
     imageUrl: "/asset/featured-1.png",
     images: [],
@@ -44,6 +49,8 @@ const fallbackProducts: StoreProduct[] = [
     name: "Niacinamide VC Serum",
     slug: "niacinamide-vc-serum",
     priceCents: 22000,
+    regularPriceCents: 22000,
+    memberPriceCents: 22000,
     currency: "HKD",
     imageUrl: "/asset/featured-2.png",
     images: [],
@@ -58,6 +65,8 @@ const fallbackProducts: StoreProduct[] = [
     name: "VC Fresh Radiance & Night Cream Set",
     slug: "vc-fresh-radiance-night-cream-set",
     priceCents: 32000,
+    regularPriceCents: 32000,
+    memberPriceCents: 32000,
     currency: "HKD",
     imageUrl: "/asset/featured-3.png",
     images: [],
@@ -72,6 +81,8 @@ const fallbackProducts: StoreProduct[] = [
     name: "Peptide Anti-Wrinkle Serum",
     slug: "peptide-anti-wrinkle-serum",
     priceCents: 21000,
+    regularPriceCents: 21000,
+    memberPriceCents: 21000,
     currency: "HKD",
     imageUrl: "/asset/featured-4.png",
     images: [],
@@ -88,6 +99,7 @@ type ProductRow = {
   name: string;
   slug: string;
   price_cents: number;
+  member_price_cents?: number | null;
   currency: string;
   image_url: string | null;
   description: string | null;
@@ -108,13 +120,13 @@ type ProductImageRow = {
 };
 
 const baseProductSelect =
-  "id,name,slug,price_cents,currency,image_url,description,inventory_quantity,is_active,sort_order";
+  "id,name,slug,price_cents,member_price_cents,currency,image_url,description,inventory_quantity,is_active,sort_order";
 const productSelect =
-  "id,name,slug,price_cents,currency,image_url,description,inventory_quantity,is_active,sort_order,product_images(id,image_url,storage_path,alt_text,sort_order,is_primary)";
+  "id,name,slug,price_cents,member_price_cents,currency,image_url,description,inventory_quantity,is_active,sort_order,product_images(id,image_url,storage_path,alt_text,sort_order,is_primary)";
 const adminBaseProductSelect =
-  "id,name,slug,price_cents,currency,image_url,description,inventory_quantity,is_active,nuc_points,sort_order";
+  "id,name,slug,price_cents,member_price_cents,currency,image_url,description,inventory_quantity,is_active,nuc_points,sort_order";
 const adminProductSelect =
-  "id,name,slug,price_cents,currency,image_url,description,inventory_quantity,is_active,nuc_points,sort_order,product_images(id,image_url,storage_path,alt_text,sort_order,is_primary)";
+  "id,name,slug,price_cents,member_price_cents,currency,image_url,description,inventory_quantity,is_active,nuc_points,sort_order,product_images(id,image_url,storage_path,alt_text,sort_order,is_primary)";
 
 export function formatProductPrice(product: Pick<StoreProduct, "currency" | "priceCents">) {
   const amount = product.priceCents / 100;
@@ -153,17 +165,21 @@ function mapProductImageRow(image: ProductImageRow): StoreProductImage {
   };
 }
 
-function mapProductRow(product: ProductRow): StoreProduct {
+function mapProductRow(product: ProductRow, useMemberPrice = false): StoreProduct {
   const images = (product.product_images ?? [])
     .map(mapProductImageRow)
     .sort((current, next) => current.sortOrder - next.sortOrder);
   const primaryImage = images.find((image) => image.isPrimary) ?? images[0];
 
+  const memberPriceCents = product.member_price_cents ?? product.price_cents;
+
   return {
     id: product.id,
     name: product.name,
     slug: product.slug,
-    priceCents: product.price_cents,
+    priceCents: useMemberPrice ? memberPriceCents : product.price_cents,
+    regularPriceCents: product.price_cents,
+    memberPriceCents,
     currency: product.currency,
     imageUrl: primaryImage?.imageUrl ?? product.image_url ?? "/asset/featured-1.png",
     images,
@@ -177,6 +193,7 @@ function mapProductRow(product: ProductRow): StoreProduct {
 
 export async function getProducts(limit?: number): Promise<StoreProduct[]> {
   try {
+    const useMemberPrice = await isCurrentUserMember();
     const supabase = createSupabaseServerClient();
     const productsQuery = supabase
       .from("products")
@@ -208,7 +225,7 @@ export async function getProducts(limit?: number): Promise<StoreProduct[]> {
       return typeof limit === "number" ? fallbackProducts.slice(0, limit) : fallbackProducts;
     }
 
-    return products.map(mapProductRow);
+    return products.map((product) => mapProductRow(product, useMemberPrice));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.warn("Unable to load Supabase products, using fallback products:", message);
@@ -222,6 +239,7 @@ export async function getFeaturedProducts(limit = 4): Promise<StoreProduct[]> {
 
 export async function getProductBySlug(slug: string): Promise<StoreProduct | null> {
   try {
+    const useMemberPrice = await isCurrentUserMember();
     const supabase = createSupabaseServerClient();
     const productResult = await supabase
       .from("products")
@@ -249,7 +267,7 @@ export async function getProductBySlug(slug: string): Promise<StoreProduct | nul
       return fallbackProducts.find((fallbackProduct) => fallbackProduct.slug === slug) ?? null;
     }
 
-    return product ? mapProductRow(product) : fallbackProducts.find((fallbackProduct) => fallbackProduct.slug === slug) ?? null;
+    return product ? mapProductRow(product, useMemberPrice) : fallbackProducts.find((fallbackProduct) => fallbackProduct.slug === slug) ?? null;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.warn("Unable to load Supabase product detail, using fallback product:", message);
@@ -265,6 +283,7 @@ export async function getProductsByIds(ids: string[]): Promise<StoreProduct[]> {
   }
 
   try {
+    const useMemberPrice = await isCurrentUserMember();
     const supabase = createSupabaseServerClient();
     const productsResult = await supabase
       .from("products")
@@ -285,7 +304,7 @@ export async function getProductsByIds(ids: string[]): Promise<StoreProduct[]> {
       return fallbackProducts.filter((product) => uniqueIds.includes(product.id));
     }
 
-    const mappedProducts = (products ?? []).map(mapProductRow);
+    const mappedProducts = (products ?? []).map((product) => mapProductRow(product, useMemberPrice));
     const fallbackMatches = fallbackProducts.filter(
       (product) => uniqueIds.includes(product.id) && !mappedProducts.some((mappedProduct) => mappedProduct.id === product.id),
     );
@@ -323,7 +342,7 @@ export async function getAdminProducts(limit = 100): Promise<StoreProduct[]> {
     throw new Error(`Unable to load admin products: ${productsError.message}`);
   }
 
-  return (products ?? []).map(mapProductRow);
+  return (products ?? []).map((product) => mapProductRow(product));
 }
 
 export async function getNextAdminProductSortOrder() {

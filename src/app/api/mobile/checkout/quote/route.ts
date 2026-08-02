@@ -1,5 +1,6 @@
 import { getCheckoutDiscountQuote } from "@/lib/discounts";
-import { getRequiredString, mobileJson, mobileOptions } from "@/lib/mobile-api";
+import { isMemberUser } from "@/lib/member-pricing";
+import { getMobileUser, getRequiredString, mobileJson, mobileOptions } from "@/lib/mobile-api";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 type CartLine = {
@@ -10,6 +11,7 @@ type CartLine = {
 type ProductRow = {
   currency: string;
   id: string;
+  member_price_cents: number;
   price_cents: number;
 };
 
@@ -46,6 +48,12 @@ export function OPTIONS() {
 }
 
 export async function POST(request: Request) {
+  const auth = await getMobileUser(request);
+
+  if (auth.response) {
+    return auth.response;
+  }
+
   let body: Record<string, unknown>;
 
   try {
@@ -69,9 +77,10 @@ export async function POST(request: Request) {
 
   try {
     const supabase = createSupabaseServiceRoleClient();
+    const useMemberPrice = await isMemberUser(auth.user);
     const { data, error } = await supabase
       .from("products")
-      .select("id,price_cents,currency")
+      .select("id,price_cents,member_price_cents,currency")
       .in(
         "id",
         lines.map((line) => line.productId),
@@ -100,7 +109,7 @@ export async function POST(request: Request) {
       }
 
       currency = product.currency;
-      subtotalCents += product.price_cents * line.quantity;
+      subtotalCents += (useMemberPrice ? product.member_price_cents : product.price_cents) * line.quantity;
     }
 
     const referralCode = getRequiredString(body.referralCode, 40)

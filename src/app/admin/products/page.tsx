@@ -43,7 +43,8 @@ export default async function AdminProductsPage() {
             <tr>
               <th>Product</th>
               <th>Slug</th>
-              <th>Price</th>
+              <th>Regular Price</th>
+              <th>Member Price</th>
               <th>NUC Points</th>
               <th>Inventory</th>
               <th>Status</th>
@@ -71,7 +72,8 @@ export default async function AdminProductsPage() {
                   </div>
                 </td>
                 <td>{product.slug}</td>
-                <td>{formatProductPrice(product)}</td>
+                <td>{formatProductPrice({ currency: product.currency, priceCents: product.regularPriceCents })}</td>
+                <td>{formatProductPrice({ currency: product.currency, priceCents: product.memberPriceCents })}</td>
                 <td>{product.nucPoints.toFixed(2)}</td>
                 <td>{product.inventoryQuantity}</td>
                 <td>

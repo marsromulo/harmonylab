@@ -52,11 +52,11 @@ function getInteger(formData: FormData, key: string, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
 
-function getPriceCents(formData: FormData) {
-  const price = Number.parseFloat(getString(formData, "price"));
+function getPriceCents(formData: FormData, key: string, label: string) {
+  const price = Number.parseFloat(getString(formData, key));
 
   if (!Number.isFinite(price) || price < 0) {
-    throw new Error("Product price must be a valid positive number.");
+    throw new Error(`${label} must be a valid positive number.`);
   }
 
   return Math.round(price * 100);
@@ -143,7 +143,8 @@ function getProductPayload(formData: FormData) {
     name,
     slug,
     description: sanitizeProductDescriptionHtml(getString(formData, "description")) || null,
-    price_cents: getPriceCents(formData),
+    price_cents: getPriceCents(formData, "price", "Regular price"),
+    member_price_cents: getPriceCents(formData, "member_price", "Member price"),
     currency: getString(formData, "currency") || "HKD",
     image_url: getString(formData, "image_url") || null,
     inventory_quantity: Math.max(getInteger(formData, "inventory_quantity", 0), 0),

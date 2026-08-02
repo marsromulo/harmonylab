@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { connection } from "next/server";
 import { AddToCartForm } from "@/components/AddToCartForm";
 import { ProductSlider } from "@/components/ProductSlider";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -69,6 +70,7 @@ const concernCards = [
 ] as const;
 
 export default async function Home() {
+  await connection();
   const products = await getFeaturedProducts(8);
 
   return (

@@ -6,6 +6,7 @@ import {
 import { normalizeEmail, normalizeHongKongPhone } from "@/lib/customer-fields";
 import { ensureCustomerProfile, upsertDefaultCustomerAddress } from "@/lib/customers";
 import { getMobileUser, getRequiredString, mobileJson, mobileOptions } from "@/lib/mobile-api";
+import { isMemberUser } from "@/lib/member-pricing";
 import {
   getMobileCheckoutServerOrigin,
   getSafeMobileReturnUrl,
@@ -24,6 +25,7 @@ type ProductRow = {
   id: string;
   inventory_quantity: number;
   name: string;
+  member_price_cents: number;
   price_cents: number;
 };
 
@@ -180,7 +182,7 @@ export async function POST(request: Request) {
 
     const { data: productData, error: productsError } = await supabase
       .from("products")
-      .select("id,name,price_cents,currency,inventory_quantity")
+      .select("id,name,price_cents,member_price_cents,currency,inventory_quantity")
       .in(
         "id",
         lines.map((line) => line.productId),
@@ -200,6 +202,7 @@ export async function POST(request: Request) {
 
     let currency = "";
     let subtotalCents = 0;
+    const useMemberPrice = await isMemberUser(auth.user);
 
     for (const line of lines) {
       const product = productsById.get(line.productId);
@@ -213,7 +216,7 @@ export async function POST(request: Request) {
       }
 
       currency = product.currency;
-      subtotalCents += product.price_cents * line.quantity;
+      subtotalCents += (useMemberPrice ? product.member_price_cents : product.price_cents) * line.quantity;
     }
 
     const enteredReferralCode = getRequiredString(body.referralCode, 40)
@@ -272,7 +275,7 @@ export async function POST(request: Request) {
 
       return {
         label: product.name,
-        priceCents: product.price_cents,
+        priceCents: useMemberPrice ? product.member_price_cents : product.price_cents,
         quantity: line.quantity,
       };
     });

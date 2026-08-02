@@ -304,7 +304,7 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
           />
         </label>
         <label>
-          Price
+          Regular Price
           <input
             name="price"
             type="number"
@@ -312,6 +312,17 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
             step="0.01"
             required
             defaultValue={product ? (product.priceCents / 100).toFixed(2) : ""}
+          />
+        </label>
+        <label>
+          Member Price
+          <input
+            name="member_price"
+            type="number"
+            min="0"
+            step="0.01"
+            required
+            defaultValue={product ? (product.memberPriceCents / 100).toFixed(2) : ""}
           />
         </label>
         <label>
