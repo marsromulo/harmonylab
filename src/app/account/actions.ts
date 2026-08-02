@@ -214,6 +214,56 @@ export async function loginCustomerAction(formData: FormData) {
   redirect(redirectPath);
 }
 
+export async function requestPasswordResetAction(formData: FormData) {
+  const email = normalizeEmail(getString(formData, "email"));
+
+  if (!email) {
+    redirect("/account/forgot-password?error=email-required");
+  }
+
+  const supabase = await createSupabaseAuthServerClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${getSiteUrl()}/auth/callback?next=/account/reset-password`,
+  });
+
+  if (error) {
+    console.error("Unable to request password reset:", error.message);
+  }
+
+  // Always use the same response so this form does not reveal whether an account exists.
+  redirect("/account/forgot-password?success=email-sent");
+}
+
+export async function updateCustomerPasswordAction(formData: FormData) {
+  const password = getString(formData, "password");
+  const passwordConfirmation = getString(formData, "password_confirmation");
+
+  if (password.length < 6) {
+    redirect("/account/reset-password?error=password-invalid");
+  }
+
+  if (password !== passwordConfirmation) {
+    redirect("/account/reset-password?error=password-mismatch");
+  }
+
+  const supabase = await createSupabaseAuthServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/account/reset-password?error=invalid-link");
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    redirect("/account/reset-password?error=update-failed");
+  }
+
+  redirect("/account?success=password-reset");
+}
+
 export async function logoutCustomerAction() {
   const supabase = await createSupabaseAuthServerClient();
   await supabase.auth.signOut();

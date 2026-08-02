@@ -123,6 +123,9 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
                 Password
                 <input name="password" type="password" required />
               </label>
+              <Link className="account-form-link" href="/account/forgot-password">
+                Forgot password?
+              </Link>
               <button type="submit">SIGN IN</button>
             </form>
 

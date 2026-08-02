@@ -50,6 +50,7 @@ const successMessages: Record<string, string> = {
   "address-saved": "Address saved.",
   "order-already-paid": "That order is already paid.",
   "confirm-email": "Account created. Check your email if confirmation is enabled.",
+  "password-reset": "Your password has been updated.",
   registered: "Account created. You are signed in.",
 };
 
@@ -295,6 +296,9 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                 Password
                 <input name="password" type="password" required />
               </label>
+              <Link className="account-form-link" href="/account/forgot-password">
+                Forgot password?
+              </Link>
               <button type="submit">SIGN IN</button>
             </form>
 

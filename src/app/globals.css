@@ -1223,6 +1223,29 @@ body {
   gap: 14px;
 }
 
+.account-auth-page {
+  min-height: 65vh;
+}
+
+.account-auth-panel {
+  margin: 0 auto;
+  max-width: 520px;
+}
+
+.account-auth-panel > p {
+  color: #625b54;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.account-form-link {
+  color: #234b3d;
+  font-size: 13px;
+  font-weight: 700;
+  justify-self: start;
+}
+
 .account-form-split {
   display: grid;
   gap: 12px;
