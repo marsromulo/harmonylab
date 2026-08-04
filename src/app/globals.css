@@ -1899,6 +1899,102 @@ body {
   margin-top: 4px;
 }
 
+.checkout-payment-logos {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.checkout-payment-logo {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e7e1dc;
+  border-radius: 6px;
+  display: inline-flex;
+  height: 34px;
+  justify-content: center;
+  min-width: 46px;
+  padding: 6px 9px;
+}
+
+.checkout-payment-logo svg {
+  display: block;
+  height: 21px;
+  width: 28px;
+}
+
+.payment-logo-alipay {
+  fill: #1677ff;
+}
+
+.payment-logo-wechat {
+  fill: #07c160;
+}
+
+.payment-logo-visa {
+  fill: #1a1f71;
+}
+
+.payment-logo-wordmark {
+  align-items: center;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 900;
+  height: 22px;
+  justify-content: center;
+  line-height: 1;
+}
+
+.payment-logo-payme {
+  color: #e51f35;
+  font-family: Georgia, serif;
+  font-size: 21px;
+}
+
+.payment-logo-fps {
+  color: #174a87;
+  font-size: 10px;
+  font-style: italic;
+}
+
+.payment-logo-unionpay {
+  background: linear-gradient(135deg, #d82735 0 34%, #167a70 34% 66%, #1d4d92 66%);
+  border-radius: 3px;
+  color: #fff;
+  padding: 4px;
+}
+
+.payment-logo-mastercard {
+  display: flex;
+  height: 21px;
+  position: relative;
+  width: 31px;
+}
+
+.payment-logo-mastercard i {
+  background: #eb001b;
+  border-radius: 50%;
+  height: 21px;
+  left: 1px;
+  position: absolute;
+  width: 21px;
+}
+
+.payment-logo-mastercard i + i {
+  background: #f79e1b;
+  left: 11px;
+  opacity: 0.92;
+}
+
+.payment-logo-jcb {
+  background: linear-gradient(90deg, #176bb5 0 33%, #168f53 33% 66%, #df2935 66%);
+  border-radius: 3px;
+  color: #fff;
+  padding: 4px;
+}
+
 .checkout-place-order {
   align-items: center;
   background: var(--orange);
@@ -6084,7 +6180,7 @@ body {
 .product-track {
   --visible-products: 5;
   --product-gap: 16px;
-  align-items: stretch;
+  align-items: flex-start;
   display: flex;
   gap: var(--product-gap);
   overflow-x: auto;
@@ -6190,7 +6286,7 @@ body {
 
 .product-card-content {
   display: flex;
-  flex: 1;
+  flex: 0 0 auto;
   flex-direction: column;
   padding: 12px 13px 14px;
 }
@@ -6214,25 +6310,12 @@ body {
   text-decoration: none;
 }
 
-.rating {
-  color: #ffb000;
-  font-size: 13px;
-  letter-spacing: 0.02em;
-  margin-top: 6px;
-}
-
-.rating span {
-  color: var(--new-text-soft);
-  font-size: 12px;
-  letter-spacing: 0;
-}
-
 .product-card-meta {
   align-items: center;
   display: flex;
   gap: 12px;
   justify-content: space-between;
-  margin-top: auto;
+  margin-top: 0;
   padding-top: 9px;
 }
 

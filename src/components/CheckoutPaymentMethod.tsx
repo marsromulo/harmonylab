@@ -1,3 +1,5 @@
+import { CheckoutPaymentLogos } from "./CheckoutPaymentLogos";
+
 export function CheckoutPaymentMethod({ formId }: { formId: string }) {
   return (
     <section className="checkout-payment">
@@ -7,10 +9,7 @@ export function CheckoutPaymentMethod({ formId }: { formId: string }) {
         <div className="checkout-payment-option active">
           <span>
             <b>Wonder Online Payment</b>
-            <small>
-              Choose from all available payment methods, including cards, AlipayHK,
-              FPS, WeChat Pay, PayMe, and supported wallets.
-            </small>
+            <CheckoutPaymentLogos />
           </span>
         </div>
       </div>

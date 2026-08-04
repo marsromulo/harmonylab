@@ -188,9 +188,6 @@ export default async function Home() {
                     <h3>
                       <Link href={`/products/${product.slug}`}>{product.name}</Link>
                     </h3>
-                    <div className="rating" aria-label="Five star rating">
-                      5.0 <span>({128 - index * 9})</span>
-                    </div>
                     <div className="product-card-meta">
                       <strong>{formatProductPrice(product)}</strong>
                       <AddToCartForm buttonClassName="new-cart-button" productId={product.id} />
