@@ -297,7 +297,6 @@ export async function POST(request: Request) {
       currency: order.currency,
       lineItems,
       note: `Harmony Lab mobile order ${order.orderNumber}`,
-      paymentMethod,
       redirectUrl: redirectUrl.toString(),
       referenceNumber: order.orderNumber,
       totalCents: order.totalCents,

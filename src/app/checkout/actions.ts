@@ -214,7 +214,6 @@ export async function createCheckoutOrderAction(formData: FormData) {
     currency: order.currency,
     lineItems,
     note: `Harmony Lab order ${order.orderNumber}`,
-    paymentMethod,
     redirectUrl: `${siteUrl}/checkout/complete?order=${encodeURIComponent(order.orderNumber)}`,
     referenceNumber: order.orderNumber,
     totalCents: order.totalCents,

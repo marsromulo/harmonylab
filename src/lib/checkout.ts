@@ -239,9 +239,7 @@ export async function markWonderOrderPaid(wonderOrder: WonderOrder) {
 
   const transaction = wonderOrder.transactions?.find((candidate) => candidate.success);
   const paymentMethod =
-    localOrder.payment_method === "alipay_hk" || localOrder.payment_method === "fps"
-      ? localOrder.payment_method
-      : transaction?.payment_method ?? localOrder.payment_method ?? "credit_card";
+    transaction?.payment_method ?? localOrder.payment_method ?? "credit_card";
   const { data, error } = await supabase
     .from("orders")
     .update({

@@ -403,7 +403,6 @@ export async function payPendingOrderAction(orderId: string) {
     currency: orderRow.currency,
     lineItems,
     note: `Harmony Lab order ${orderRow.order_number}`,
-    paymentMethod,
     redirectUrl: `${siteUrl}/checkout/complete?order=${encodeURIComponent(orderRow.order_number)}&return_to=account`,
     referenceNumber: orderRow.order_number,
     totalCents: orderRow.total_cents,

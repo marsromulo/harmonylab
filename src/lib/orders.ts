@@ -291,19 +291,26 @@ export function getOrderStatusLabel(status: OrderStatus) {
 }
 
 export function getPaymentMethodLabel(method: string | null) {
-  if (method === "credit_card") {
-    return "Credit Card";
-  }
+  const labels: Record<string, string> = {
+    alipay: "Alipay & Alipay+",
+    alipay_hk: "AlipayHK",
+    alipayhk: "AlipayHK",
+    amex: "American Express",
+    credit_card: "Credit Card",
+    cup: "UnionPay Card",
+    diners: "Diners Club",
+    discover: "Discover",
+    fps: "FPS",
+    jcb: "JCB",
+    mastercard: "Mastercard",
+    octopus: "Octopus",
+    payme: "PayMe",
+    unionpay_wallet: "UnionPay Wallet",
+    visa: "Visa",
+    wechat: "WeChat Pay",
+  };
 
-  if (method === "alipay_hk" || method === "alipayhk") {
-    return "AlipayHK";
-  }
-
-  if (method === "fps") {
-    return "FPS";
-  }
-
-  return method || "Not selected";
+  return method ? labels[method.toLowerCase()] ?? method : "Not selected";
 }
 
 export function getPaymentProviderLabel(provider: string | null) {

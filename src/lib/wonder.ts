@@ -24,7 +24,6 @@ type CreateWonderPaymentLinkInput = {
   currency: string;
   lineItems: WonderLineItem[];
   note?: string;
-  paymentMethod: WonderPaymentMethod;
   redirectUrl: string;
   referenceNumber: string;
   totalCents: number;
@@ -211,14 +210,6 @@ function formatMoney(cents: number) {
   return (cents / 100).toFixed(2);
 }
 
-function getWonderPaymentMethodFilter(paymentMethod: WonderPaymentMethod) {
-  if (paymentMethod === "credit_card") {
-    return "visa,mastercard,amex,jcb,cup,discover,diners";
-  }
-
-  return paymentMethod;
-}
-
 function getPayableLineItems(lineItems: WonderLineItem[], totalCents: number) {
   const lineItemTotal = lineItems.reduce(
     (total, item) => total + item.priceCents * item.quantity,
@@ -293,11 +284,6 @@ export async function createWonderPaymentLink(input: CreateWonderPaymentLinkInpu
         total: formatMoney(item.priceCents * item.quantity),
       })),
       note: input.note?.slice(0, 255),
-      payment_method_option: {
-        online: {
-          show: getWonderPaymentMethodFilter(input.paymentMethod),
-        },
-      },
       redirect_url: input.redirectUrl,
       reference_number: input.referenceNumber,
     },
