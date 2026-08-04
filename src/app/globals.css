@@ -5646,6 +5646,34 @@ body {
   justify-content: flex-end;
 }
 
+.site-menu-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  color: var(--new-text);
+  cursor: pointer;
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  height: 42px;
+  justify-content: center;
+  padding: 8px;
+  width: 42px;
+}
+
+.site-menu-toggle span {
+  background: currentColor;
+  border-radius: 2px;
+  display: block;
+  height: 2px;
+  width: 24px;
+}
+
+.site-mobile-menu-layer {
+  display: none;
+}
+
 .site-icon-user,
 .site-icon-bag {
   align-items: center;
@@ -6422,6 +6450,90 @@ body {
 
   .site-nav {
     display: none;
+  }
+
+  .site-menu-toggle {
+    display: flex;
+  }
+
+  .site-mobile-menu-layer {
+    display: block;
+    inset: 0;
+    position: fixed;
+    z-index: 1000;
+  }
+
+  .site-mobile-menu-backdrop {
+    background: rgba(28, 18, 35, 0.45);
+    border: 0;
+    inset: 0;
+    position: absolute;
+    width: 100%;
+  }
+
+  .site-mobile-menu {
+    background: #fff;
+    box-shadow: -14px 0 36px rgba(38, 20, 48, 0.18);
+    height: 100%;
+    max-width: 340px;
+    overflow-y: auto;
+    padding: 24px;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: min(86vw, 340px);
+  }
+
+  .site-mobile-menu-head {
+    align-items: center;
+    border-bottom: 1px solid var(--new-border);
+    color: var(--new-purple-deep);
+    display: flex;
+    font-family: var(--font-playfair), Georgia, serif;
+    font-size: 24px;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+  }
+
+  .site-mobile-menu-close {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: var(--new-text);
+    cursor: pointer;
+    display: flex;
+    height: 42px;
+    justify-content: center;
+    padding: 8px;
+    width: 42px;
+  }
+
+  .site-mobile-menu-close svg {
+    fill: none;
+    height: 25px;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-width: 2;
+    width: 25px;
+  }
+
+  .site-mobile-menu nav {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .site-mobile-menu nav a {
+    border-bottom: 1px solid var(--new-border);
+    color: var(--new-text);
+    font-size: 17px;
+    font-weight: 700;
+    padding: 17px 4px;
+    text-decoration: none;
+  }
+
+  .site-mobile-menu nav a.active {
+    color: var(--new-purple-deep);
   }
 
   .new-hero::before {

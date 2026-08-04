@@ -1,18 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getCartSummary } from "@/lib/cart";
+import { SiteMobileMenu } from "./SiteMobileMenu";
+import { siteNavItems, type SiteNavKey } from "./site-navigation";
 
 type SiteHeaderProps = {
-  active?: "home" | "products" | "faq" | "shipping" | "contact" | "account";
+  active?: SiteNavKey;
 };
-
-const navItems = [
-  { key: "home", label: "Home", href: "/" },
-  { key: "products", label: "Products", href: "/products" },
-  { key: "faq", label: "FAQ", href: "/faq" },
-  { key: "shipping", label: "Shipping", href: "/shipping" },
-  { key: "contact", label: "Contact Us", href: "/contact-us" },
-] as const;
 
 export async function SiteHeader({ active = "home" }: SiteHeaderProps) {
   const cart = await getCartSummary();
@@ -40,7 +34,7 @@ export async function SiteHeader({ active = "home" }: SiteHeaderProps) {
             />
           </Link>
           <nav className="site-nav" aria-label="Primary navigation">
-            {navItems.map((item) => (
+            {siteNavItems.map((item) => (
               <Link
                 className={active === item.key ? "active" : undefined}
                 href={item.href}
@@ -73,6 +67,7 @@ export async function SiteHeader({ active = "home" }: SiteHeaderProps) {
               </svg>
               <em>{cart.itemCount}</em>
             </Link>
+            <SiteMobileMenu active={active} />
           </div>
         </div>
       </header>
