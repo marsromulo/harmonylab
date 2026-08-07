@@ -1,4 +1,4 @@
-import sgMail from "@sendgrid/mail";
+import nodemailer from "nodemailer";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 type OrderEmailRecipient = "admin" | "customer";
@@ -42,25 +42,34 @@ type EmailMessage = {
   text: string;
 };
 
-function getSendGridConfiguration() {
-  const apiKey = process.env.SENDGRID_API_KEY?.trim();
-  const fromEmail = process.env.SENDGRID_FROM_EMAIL?.trim();
+function getSmtpConfiguration() {
+  const host = process.env.SMTP_HOST?.trim();
+  const password = process.env.SMTP_PASSWORD?.trim();
+  const port = Number(process.env.SMTP_PORT?.trim() || "587");
+  const user = process.env.SMTP_USER?.trim();
+  const fromEmail = process.env.SMTP_FROM_EMAIL?.trim();
+  const fromName = process.env.SMTP_FROM_NAME?.trim() || "Harmony Lab";
+  const replyToEmail = process.env.SMTP_REPLY_TO_EMAIL?.trim() || fromEmail;
 
-  if (!apiKey || !fromEmail) {
-    throw new Error("Missing SENDGRID_API_KEY or SENDGRID_FROM_EMAIL.");
+  if (!host || !password || !user || !fromEmail) {
+    throw new Error(
+      "Missing SMTP_HOST, SMTP_USER, SMTP_PASSWORD, or SMTP_FROM_EMAIL.",
+    );
   }
 
-  sgMail.setApiKey(apiKey);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error("SMTP_PORT must be a valid port number.");
+  }
 
   return {
-    from: {
-      email: fromEmail,
-      name: "Harmony Lab",
-    },
-    replyTo: {
-      email: "harmonylabhk@gmail.com",
-      name: "Harmony Lab",
-    },
+    from: { address: fromEmail, name: fromName },
+    replyTo: { address: replyToEmail, name: fromName },
+    transport: nodemailer.createTransport({
+      auth: { pass: password, user },
+      host,
+      port,
+      secure: port === 465,
+    }),
   };
 }
 
@@ -355,9 +364,9 @@ async function sendClaimedEmail({
   }
 
   try {
-    const { from, replyTo } = getSendGridConfiguration();
+    const { from, replyTo, transport } = getSmtpConfiguration();
 
-    await sgMail.send({
+    await transport.sendMail({
       from,
       html: message.html,
       replyTo,
