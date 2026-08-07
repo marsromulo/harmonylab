@@ -49,7 +49,6 @@ function getSmtpConfiguration() {
   const user = process.env.SMTP_USER?.trim();
   const fromEmail = process.env.SMTP_FROM_EMAIL?.trim();
   const fromName = process.env.SMTP_FROM_NAME?.trim() || "Harmony Lab";
-  const replyToEmail = process.env.SMTP_REPLY_TO_EMAIL?.trim() || fromEmail;
 
   if (!host || !password || !user || !fromEmail) {
     throw new Error(
@@ -60,6 +59,8 @@ function getSmtpConfiguration() {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error("SMTP_PORT must be a valid port number.");
   }
+
+  const replyToEmail = process.env.SMTP_REPLY_TO_EMAIL?.trim() || fromEmail;
 
   return {
     from: { address: fromEmail, name: fromName },
