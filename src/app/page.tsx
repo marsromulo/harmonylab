@@ -66,7 +66,7 @@ const concernCards = [
   },
   {
     className: "concern-card--mint",
-    image: "/new-design/assets/product_04.png",
+    image: "/new-design/assets/organic-sunscreen-card.png",
     title: "Organic Sunscreen SPF 50 PA",
     href: "/products/organic-sunscreen-spf-50-pa",
     icon: "heart",
