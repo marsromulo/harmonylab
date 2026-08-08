@@ -135,6 +135,36 @@ export default async function Home() {
           </div>
         </section>
 
+        <section className="new-section section-story" aria-labelledby="story-heading">
+          <div className="store-container story-layout">
+            <div className="story-video-wrap">
+              <video
+                id="harmony-story-video"
+                className="story-video"
+                controls
+                playsInline
+                preload="metadata"
+                aria-label="Harmony skincare story"
+              >
+                <source src="/media/harmony-video.mp4" type="video/mp4" />
+                Your browser does not support the video element.
+              </video>
+            </div>
+
+            <div className="section-copy story-copy">
+              <p className="section-label">Our story</p>
+              <h2 id="story-heading">Science-Backed Skincare That Works in Harmony with You.</h2>
+              <p>
+                We blend advanced science with gentle, effective ingredients to help your skin look and feel its
+                best—every day.
+              </p>
+              <a className="new-btn new-btn-primary story-button" href="/media/harmony-video.mp4">
+                Watch Our Story
+              </a>
+            </div>
+          </div>
+        </section>
+
         <section className="new-section section-concerns">
           <div className="store-container concerns-layout">
             <div className="section-copy">
