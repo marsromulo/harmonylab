@@ -1,11 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { connection } from "next/server";
-import { AddToCartForm } from "@/components/AddToCartForm";
-import { ProductSlider } from "@/components/ProductSlider";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { formatProductPrice, getFeaturedProducts } from "@/lib/products";
 
 function ValueIcon({ type }: { type: "leaf" | "skin" | "sparkles" | "heart" }) {
   if (type === "leaf") {
@@ -73,10 +69,7 @@ const concernCards = [
   },
 ] as const;
 
-export default async function Home() {
-  await connection();
-  const products = await getFeaturedProducts(8);
-
+export default function Home() {
   return (
     <div className="page new-design-page">
       <SiteHeader active="home" />
@@ -196,40 +189,6 @@ export default async function Home() {
                 </article>
               ))}
             </div>
-          </div>
-        </section>
-
-        <section className="new-section section-products" id="products">
-          <div className="store-container">
-            <div className="section-head">
-              <div>
-                <p className="section-label">Best sellers</p>
-                <h2>Our Products</h2>
-              </div>
-              <Link className="text-link" href="/products">
-                View All Products
-              </Link>
-            </div>
-
-            <ProductSlider>
-              {products.map((product, index) => (
-                <article className="product-card" key={product.id}>
-                  <Link className="product-card-media" href={`/products/${product.slug}`} aria-label={`View ${product.name}`}>
-                    {index === 0 ? <span className="pill pill-purple">Bestseller</span> : null}
-                    <Image src={product.imageUrl} alt={product.name} width={420} height={390} />
-                  </Link>
-                  <div className="product-card-content">
-                    <h3>
-                      <Link href={`/products/${product.slug}`}>{product.name}</Link>
-                    </h3>
-                    <div className="product-card-meta">
-                      <strong>{formatProductPrice(product)}</strong>
-                      <AddToCartForm buttonClassName="new-cart-button" productId={product.id} />
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </ProductSlider>
           </div>
         </section>
 
