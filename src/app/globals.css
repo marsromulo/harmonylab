@@ -6166,8 +6166,8 @@ body {
   background: rgb(var(--concern-fade-rgb));
 }
 
-.concern-card--mint {
-  --concern-fade-rgb: 219, 234, 231;
+.concern-card--light-brown {
+  --concern-fade-rgb: 225, 207, 181;
   background: rgb(var(--concern-fade-rgb));
 }
 
