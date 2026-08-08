@@ -51,7 +51,7 @@ export function ReferralCodeCapture({ code }: { code: string }) {
         }
 
         setStatus("saved");
-        timeout = window.setTimeout(() => router.replace("/products"), 900);
+        timeout = window.setTimeout(() => router.replace("/"), 900);
       })
       .catch((error) => {
         if (active) {
@@ -94,8 +94,8 @@ export function ReferralCodeCapture({ code }: { code: string }) {
           CONTINUE WITHOUT A CODE
         </button>
       ) : status === "saved" ? (
-        <Link className="cart-checkout" href="/products">
-          CONTINUE SHOPPING
+        <Link className="cart-checkout" href="/">
+          GO TO HOMEPAGE
         </Link>
       ) : null}
     </section>
