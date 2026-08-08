@@ -47,24 +47,28 @@ const concernCards = [
     className: "concern-card--lavender",
     image: "/new-design/assets/product_01.png",
     title: "Anti-Aging & Renewal",
+    href: "/products/retinol-serum",
     icon: "sparkles",
   },
   {
     className: "concern-card--pink",
     image: "/new-design/assets/product_02.png",
     title: "Brightening & Even Tone",
+    href: "/products/niacinamide-serum",
     icon: "skin",
   },
   {
     className: "concern-card--gold",
     image: "/new-design/assets/product_03.png",
     title: "Hydration & Glow",
+    href: "/products/vitamin-c-serum",
     icon: "sparkles",
   },
   {
     className: "concern-card--mint",
     image: "/new-design/assets/product_04.png",
-    title: "Skin Barrier & Care",
+    title: "Organic Sunscreen SPF 50 PA",
+    href: "/products/organic-sunscreen-spf-50-pa",
     icon: "heart",
   },
 ] as const;
@@ -149,7 +153,7 @@ export default async function Home() {
             <div className="concern-grid">
               {concernCards.map((card) => (
                 <article className={`concern-card ${card.className}`} key={card.title}>
-                  <Link className="concern-card-media" href="/products" aria-label={`View products for ${card.title}`}>
+                  <Link className="concern-card-media" href={card.href} aria-label={`View ${card.title}`}>
                     <Image src={card.image} alt="" width={330} height={420} />
                   </Link>
                   <div className="concern-card-content">
@@ -157,7 +161,7 @@ export default async function Home() {
                       <ValueIcon type={card.icon} />
                     </span>
                     <h3>{card.title}</h3>
-                    <Link href="/products">Shop Now</Link>
+                    <Link href={card.href}>Shop Now</Link>
                   </div>
                 </article>
               ))}
