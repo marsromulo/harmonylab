@@ -87,7 +87,7 @@ export function ProductReviews({ productSlug }: { productSlug: string }) {
           <p className="eyebrow">SHARED EXPERIENCES</p>
           <h2 id="sample-reviews-heading">Customer Reviews</h2>
         </div>
-        <p className="product-reviews-disclosure">Illustrative review content</p>
+        <p className="product-reviews-disclosure"></p>
       </div>
 
       <div className="product-review-grid">
