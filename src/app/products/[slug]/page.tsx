@@ -64,7 +64,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           </div>
         </section>
 
-        <ProductReviews />
+        <ProductReviews productSlug={product.slug} />
       </main>
       <SiteFooter />
     </div>
