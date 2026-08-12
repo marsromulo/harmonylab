@@ -52,9 +52,8 @@ export function ProductReviews() {
       <div className="product-reviews-heading">
         <div>
           <p className="eyebrow">SHARED EXPERIENCES</p>
-          <h2 id="sample-reviews-heading">Sample Customer Reviews</h2>
+          <h2 id="sample-reviews-heading">Customer Reviews</h2>
         </div>
-        <p className="product-reviews-disclosure">Illustrative sample content</p>
       </div>
 
       <div className="product-review-grid">
