@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { AddToCartForm } from "@/components/AddToCartForm";
 import { ProductImageGallery } from "@/components/ProductImageGallery";
+import { ProductReviews } from "@/components/ProductReviews";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { formatProductPrice, getProductBySlug } from "@/lib/products";
@@ -62,6 +63,8 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <AddToCartForm buttonClassName="product-detail-cart" productId={product.id} showQuantity />
           </div>
         </section>
+
+        <ProductReviews />
       </main>
       <SiteFooter />
     </div>
