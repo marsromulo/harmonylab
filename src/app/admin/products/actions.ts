@@ -7,6 +7,9 @@ import { requireAdmin } from "@/lib/admin-auth";
 const PRODUCT_IMAGE_BUCKET = "product-images";
 const MAX_IMAGES_PER_SUBMISSION = 8;
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_VIDEO_SIZE_BYTES = 60 * 1024 * 1024;
+const MAX_VIDEOS_PER_SUBMISSION = 1;
+const ALLOWED_VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
 
 type AdminSupabaseClient = Awaited<ReturnType<typeof requireAdmin>>["supabase"];
 type ProductImageInsertRow = {
@@ -16,12 +19,14 @@ type ProductImageInsertRow = {
   alt_text: string;
   sort_order: number;
   is_primary: boolean;
+  media_type: "image" | "video";
 };
 
 type ProductImageRecord = {
   id: string;
   image_url: string;
   storage_path: string | null;
+  media_type?: "image" | "video" | null;
 };
 
 const allowedDescriptionTags = new Set(["a", "b", "br", "em", "h3", "i", "li", "ol", "p", "strong", "u", "ul"]);
@@ -176,6 +181,27 @@ function getImageFiles(formData: FormData) {
   return files;
 }
 
+function getVideoFiles(formData: FormData) {
+  const files = formData
+    .getAll("videos")
+    .filter((value): value is File => value instanceof File && value.size > 0);
+
+  if (files.length > MAX_VIDEOS_PER_SUBMISSION) {
+    throw new Error("Please upload one product video at a time.");
+  }
+
+  files.forEach((file) => {
+    if (!ALLOWED_VIDEO_TYPES.has(file.type)) {
+      throw new Error("Product videos must be MP4, WebM, or MOV files.");
+    }
+    if (file.size > MAX_VIDEO_SIZE_BYTES) {
+      throw new Error("Each product video must be 60MB or smaller.");
+    }
+  });
+
+  return files;
+}
+
 function getSafeFileName(fileName: string) {
   const parts = fileName.split(".");
   const extension = parts.length > 1 ? `.${slugify(parts.pop() ?? "")}` : "";
@@ -254,6 +280,7 @@ async function uploadProductImages({
       alt_text: productName,
       sort_order: startSortOrder + index * 10,
       is_primary: makeFirstPrimary && index === 0,
+      media_type: "image",
     });
   }
 
@@ -263,6 +290,48 @@ async function uploadProductImages({
     throw new Error(`Unable to save product image records: ${insertError.message}`);
   }
 
+  return rows;
+}
+
+async function uploadProductVideos({
+  supabase,
+  productId,
+  productName,
+  files,
+  startSortOrder,
+}: {
+  supabase: AdminSupabaseClient;
+  productId: string;
+  productName: string;
+  files: File[];
+  startSortOrder: number;
+}) {
+  const rows: ProductImageInsertRow[] = [];
+
+  for (const [index, file] of files.entries()) {
+    const storagePath = `products/${productId}/${Date.now()}-video-${index}-${getSafeFileName(file.name)}`;
+    const { error: uploadError } = await supabase.storage.from(PRODUCT_IMAGE_BUCKET).upload(storagePath, file, {
+      contentType: file.type,
+      upsert: false,
+    });
+    if (uploadError) throw new Error(`Unable to upload product video: ${uploadError.message}`);
+
+    const { data: { publicUrl } } = supabase.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(storagePath);
+    rows.push({
+      product_id: productId,
+      image_url: publicUrl,
+      storage_path: storagePath,
+      alt_text: `${productName} video`,
+      sort_order: startSortOrder + index * 10,
+      is_primary: false,
+      media_type: "video",
+    });
+  }
+
+  if (rows.length) {
+    const { error } = await supabase.from("product_images").insert(rows);
+    if (error) throw new Error(`Unable to save product video records: ${error.message}`);
+  }
   return rows;
 }
 
@@ -360,7 +429,7 @@ async function syncExistingProductImageOrder({
 
   const { data, error } = await supabase
     .from("product_images")
-    .select("id,image_url,storage_path")
+    .select("id,image_url,storage_path,media_type")
     .eq("product_id", productId)
     .in("id", uniqueOrderedImageIds);
 
@@ -379,7 +448,7 @@ async function syncExistingProductImageOrder({
     const { error: updateError } = await supabase
       .from("product_images")
       .update({
-        is_primary: index === 0,
+        is_primary: image.media_type !== "video" && image.id === existingOrderedImages.find((item) => item.media_type !== "video")?.id,
         sort_order: (index + 1) * 10,
       })
       .eq("product_id", productId)
@@ -390,13 +459,14 @@ async function syncExistingProductImageOrder({
     }
   }
 
-  return existingOrderedImages[0] ?? null;
+  return existingOrderedImages.find((image) => image.media_type !== "video") ?? null;
 }
 
 export async function createProductAction(formData: FormData) {
   const { supabase } = await requireAdmin();
   const payload = getProductPayload(formData);
   const imageFiles = getImageFiles(formData);
+  const videoFiles = getVideoFiles(formData);
   const { data, error } = await supabase.from("products").insert(payload).select("id").single();
 
   if (error) {
@@ -410,6 +480,13 @@ export async function createProductAction(formData: FormData) {
     files: imageFiles,
     startSortOrder: 10,
     makeFirstPrimary: imageFiles.length > 0,
+  });
+  await uploadProductVideos({
+    supabase,
+    productId: data.id,
+    productName: payload.name,
+    files: videoFiles,
+    startSortOrder: 10 + imageFiles.length * 10,
   });
 
   if (uploadedImages[0]?.image_url) {
@@ -443,6 +520,7 @@ export async function updateProductAction(id: string, formData: FormData) {
   const { supabase } = await requireAdmin();
   const payload = getProductPayload(formData);
   const imageFiles = getImageFiles(formData);
+  const videoFiles = getVideoFiles(formData);
   const deletedImageIds = getStrings(formData, "deleted_image_ids");
   const orderedExistingImageIds = getStrings(formData, "existing_image_order").filter(
     (imageId) => !deletedImageIds.includes(imageId),
@@ -473,6 +551,14 @@ export async function updateProductAction(id: string, formData: FormData) {
     files: imageFiles,
     startSortOrder: nextImageSortOrder,
     makeFirstPrimary: !primaryExistingImage && imageFiles.length > 0,
+  });
+  const nextVideoSortOrder = videoFiles.length > 0 ? await getNextImageSortOrder(supabase, id) : 10;
+  await uploadProductVideos({
+    supabase,
+    productId: id,
+    productName: payload.name,
+    files: videoFiles,
+    startSortOrder: nextVideoSortOrder,
   });
 
   if (primaryExistingImage?.image_url) {

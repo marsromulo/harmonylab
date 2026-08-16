@@ -25,6 +25,7 @@ export type StoreProductImage = {
   altText: string | null;
   sortOrder: number;
   isPrimary: boolean;
+  mediaType: "image" | "video";
 };
 
 const fallbackProducts: StoreProduct[] = [
@@ -117,16 +118,17 @@ type ProductImageRow = {
   alt_text: string | null;
   sort_order: number;
   is_primary: boolean;
+  media_type?: "image" | "video" | null;
 };
 
 const baseProductSelect =
   "id,name,slug,price_cents,member_price_cents,currency,image_url,description,inventory_quantity,is_active,sort_order";
 const productSelect =
-  "id,name,slug,price_cents,member_price_cents,currency,image_url,description,inventory_quantity,is_active,sort_order,product_images(id,image_url,storage_path,alt_text,sort_order,is_primary)";
+  "id,name,slug,price_cents,member_price_cents,currency,image_url,description,inventory_quantity,is_active,sort_order,product_images(id,image_url,storage_path,alt_text,sort_order,is_primary,media_type)";
 const adminBaseProductSelect =
   "id,name,slug,price_cents,member_price_cents,currency,image_url,description,inventory_quantity,is_active,nuc_points,sort_order";
 const adminProductSelect =
-  "id,name,slug,price_cents,member_price_cents,currency,image_url,description,inventory_quantity,is_active,nuc_points,sort_order,product_images(id,image_url,storage_path,alt_text,sort_order,is_primary)";
+  "id,name,slug,price_cents,member_price_cents,currency,image_url,description,inventory_quantity,is_active,nuc_points,sort_order,product_images(id,image_url,storage_path,alt_text,sort_order,is_primary,media_type)";
 
 export function formatProductPrice(product: Pick<StoreProduct, "currency" | "priceCents">) {
   const amount = product.priceCents / 100;
@@ -162,6 +164,7 @@ function mapProductImageRow(image: ProductImageRow): StoreProductImage {
     altText: image.alt_text,
     sortOrder: image.sort_order,
     isPrimary: image.is_primary,
+    mediaType: image.media_type === "video" ? "video" : "image",
   };
 }
 
@@ -169,7 +172,8 @@ function mapProductRow(product: ProductRow, useMemberPrice = false): StoreProduc
   const images = (product.product_images ?? [])
     .map(mapProductImageRow)
     .sort((current, next) => current.sortOrder - next.sortOrder);
-  const primaryImage = images.find((image) => image.isPrimary) ?? images[0];
+  const primaryImage = images.find((image) => image.isPrimary && image.mediaType === "image")
+    ?? images.find((image) => image.mediaType === "image");
 
   const memberPriceCents = product.member_price_cents ?? product.price_cents;
 

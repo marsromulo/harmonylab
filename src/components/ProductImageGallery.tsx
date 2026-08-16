@@ -15,6 +15,7 @@ export function ProductImageGallery({ product }: ProductImageGalleryProps) {
           alt: image.altText ?? product.name,
           id: image.id,
           url: image.imageUrl,
+          type: image.mediaType,
         }))
       : [];
 
@@ -23,6 +24,7 @@ export function ProductImageGallery({ product }: ProductImageGalleryProps) {
         alt: product.name,
         id: "primary-image",
         url: product.imageUrl,
+        type: "image" as const,
       });
     }
 
@@ -35,13 +37,11 @@ export function ProductImageGallery({ product }: ProductImageGalleryProps) {
   return (
     <div className="product-gallery">
       <div className="product-gallery-main">
-        <Image
-          src={activeImage?.url ?? product.imageUrl}
-          alt={activeImage?.alt ?? product.name}
-          width={610}
-          height={610}
-          priority
-        />
+        {activeImage?.type === "video" ? (
+          <video src={activeImage.url} controls playsInline preload="metadata" aria-label={activeImage.alt} />
+        ) : (
+          <Image src={activeImage?.url ?? product.imageUrl} alt={activeImage?.alt ?? product.name} width={610} height={610} priority />
+        )}
       </div>
 
       {images.length > 1 ? (
@@ -54,7 +54,12 @@ export function ProductImageGallery({ product }: ProductImageGalleryProps) {
               onClick={() => setActiveImageUrl(image.url)}
               aria-label={`View ${image.alt}`}
             >
-              <Image src={image.url} alt="" width={86} height={86} />
+              {image.type === "video" ? (
+                <span className="product-video-thumb">
+                  <video src={image.url} muted playsInline preload="metadata" />
+                  <span aria-hidden="true">▶</span>
+                </span>
+              ) : <Image src={image.url} alt="" width={86} height={86} />}
             </button>
           ))}
         </div>

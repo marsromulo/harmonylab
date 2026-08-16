@@ -134,6 +134,7 @@ async function compressImageFile(file: File) {
 
 export function ProductForm({ action, product, mode, nextSortOrder }: ProductFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const [productName, setProductName] = useState(product?.name ?? "");
   const [slug, setSlug] = useState(product?.slug ?? "");
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(mode === "edit");
@@ -143,17 +144,54 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
   const selectedFilesRef = useRef<File[]>([]);
   const [isCompressingImages, setIsCompressingImages] = useState(false);
   const [imageUploadMessage, setImageUploadMessage] = useState("");
+  const [selectedVideos, setSelectedVideos] = useState<File[]>([]);
+  const [videoUploadMessage, setVideoUploadMessage] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [draggedCurrentImageIndex, setDraggedCurrentImageIndex] = useState<number | null>(null);
   const [draggedPreviewIndex, setDraggedPreviewIndex] = useState<number | null>(null);
 
   const previewUrls = useMemo(() => selectedFiles.map((file) => URL.createObjectURL(file)), [selectedFiles]);
+  const videoPreviewUrls = useMemo(() => selectedVideos.map((file) => URL.createObjectURL(file)), [selectedVideos]);
 
   useEffect(() => {
     return () => {
       previewUrls.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [previewUrls]);
+
+  useEffect(() => () => videoPreviewUrls.forEach((url) => URL.revokeObjectURL(url)), [videoPreviewUrls]);
+
+  function addVideos(files: File[]) {
+    const allowedTypes = new Set(["video/mp4", "video/webm", "video/quicktime"]);
+    const validFiles = files.filter((file) => allowedTypes.has(file.type));
+    const oversized = validFiles.find((file) => file.size > 60 * 1024 * 1024);
+    if (oversized) {
+      setVideoUploadMessage(`${oversized.name} is ${formatFileSize(oversized.size)}. Product videos must be 60 MB or smaller.`);
+      return;
+    }
+    if (validFiles.length !== files.length) {
+      setVideoUploadMessage("Product videos must be MP4, WebM, or MOV files.");
+      return;
+    }
+    const nextVideos = validFiles.slice(0, 1);
+    setSelectedVideos(nextVideos);
+    if (videoInputRef.current) {
+      const transfer = new DataTransfer();
+      nextVideos.forEach((file) => transfer.items.add(file));
+      videoInputRef.current.files = transfer.files;
+    }
+    setVideoUploadMessage(validFiles.length > 1 ? "Please upload one product video at a time." : "");
+  }
+
+  function removeVideo(indexToRemove: number) {
+    const nextVideos = selectedVideos.filter((_, index) => index !== indexToRemove);
+    setSelectedVideos(nextVideos);
+    if (videoInputRef.current) {
+      const transfer = new DataTransfer();
+      nextVideos.forEach((file) => transfer.items.add(file));
+      videoInputRef.current.files = transfer.files;
+    }
+  }
 
   function syncInputFiles(files: File[]) {
     if (fileInputRef.current) {
@@ -389,13 +427,12 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
                   }
                 }}
               >
-                <span
-                  className="admin-image-preview-thumb"
-                  style={{ backgroundImage: `url(${image.imageUrl})` }}
-                  role="img"
-                  aria-label={image.altText ?? productName}
-                />
-                {index === 0 ? <small className="admin-image-primary-badge">Hero</small> : null}
+                {image.mediaType === "video" ? (
+                  <video className="admin-image-preview-thumb admin-video-preview" src={image.imageUrl} muted playsInline preload="metadata" />
+                ) : (
+                  <span className="admin-image-preview-thumb" style={{ backgroundImage: `url(${image.imageUrl})` }} role="img" aria-label={image.altText ?? productName} />
+                )}
+                <small className="admin-image-primary-badge">{image.mediaType === "video" ? "Video" : index === 0 ? "Hero" : "Image"}</small>
                 <button
                   className="admin-image-remove"
                   aria-label={`Remove ${image.altText ?? productName}`}
@@ -491,6 +528,31 @@ export function ProductForm({ action, product, mode, nextSortOrder }: ProductFor
                   removeFile(index);
                 }}
               />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <label className="admin-image-dropzone">
+        <input
+          ref={videoInputRef}
+          className="admin-file-input"
+          name="videos"
+          type="file"
+          accept="video/mp4,video/webm,video/quicktime,.mov"
+          onChange={(event) => addVideos(Array.from(event.currentTarget.files ?? []))}
+        />
+        <strong>Drop product videos here</strong>
+        <span>or click to upload MP4, WebM, or MOV videos, up to 60 MB each</span>
+      </label>
+      {videoUploadMessage ? <p className="admin-image-upload-message">{videoUploadMessage}</p> : null}
+      {selectedVideos.length ? (
+        <div className="admin-image-preview-grid">
+          {selectedVideos.map((file, index) => (
+            <div className="admin-image-preview" key={`${file.name}-${file.size}-${file.lastModified}`}>
+              <video className="admin-image-preview-thumb admin-video-preview" src={videoPreviewUrls[index]} muted playsInline preload="metadata" />
+              <small className="admin-image-primary-badge">Video</small>
+              <button className="admin-image-remove" aria-label={`Remove ${file.name}`} type="button" onClick={() => removeVideo(index)} />
             </div>
           ))}
         </div>
