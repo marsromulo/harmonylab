@@ -139,7 +139,7 @@ export default function Home() {
                 preload="metadata"
                 aria-label="Harmony skincare story"
               >
-                <source src="/media/harmony-video.mp4" type="video/mp4" />
+                <source src="/media/mainpage-video.mp4" type="video/mp4" />
                 Your browser does not support the video element.
               </video>
             </div>
@@ -151,7 +151,7 @@ export default function Home() {
                 We blend advanced science with gentle, effective ingredients to help your skin look and feel its
                 best—every day.
               </p>
-              <a className="new-btn new-btn-primary story-button" href="/media/harmony-video.mp4">
+              <a className="new-btn new-btn-primary story-button" href="/media/mainpage-video.mp4">
                 Watch Our Story
               </a>
             </div>
