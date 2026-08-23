@@ -8,7 +8,7 @@ function getString(value: unknown, maxLength: number) {
 
 function normalizeReferralCode(value: unknown) {
   return getString(value, 40)
-    .replace(/[^\w-]/g, "")
+    .replace(/\D/g, "")
     .toUpperCase();
 }
 

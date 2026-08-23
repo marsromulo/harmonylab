@@ -1,6 +1,7 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 type PaidOrderRewardRow = {
+  customer_name: string | null;
   currency: string;
   id: string;
   order_number: string;
@@ -31,7 +32,7 @@ export async function notifyAinettOrderReward(orderId: string) {
   const supabase = createSupabaseServiceRoleClient();
   const { data, error } = await supabase
     .from("orders")
-    .select("id,order_number,referral_code_entered,referral_points_awarded,total_cents,currency")
+    .select("id,order_number,customer_name,referral_code_entered,referral_points_awarded,total_cents,currency")
     .eq("id", orderId)
     .maybeSingle();
 
@@ -55,6 +56,7 @@ export async function notifyAinettOrderReward(orderId: string) {
     body: JSON.stringify({
       order_id: order.id,
       order_number: order.order_number,
+      purchaser_name: order.customer_name?.trim() || null,
       referral_code: order.referral_code_entered,
       reward_amount: Number(order.referral_points_awarded ?? 0),
       total_amount: Number(order.total_cents ?? 0) / 100,
