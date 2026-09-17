@@ -1654,6 +1654,19 @@ body {
   gap: 14px;
 }
 
+.checkout-pickup-address {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #faf6fc;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.checkout-pickup-address p {
+  margin: 8px 0;
+}
+
 .account-order-card {
   align-items: center;
   border: 1px solid var(--line);

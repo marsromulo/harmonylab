@@ -14,6 +14,7 @@ type CreateCheckoutOrderInput = {
   customerId: string;
   customerName: string;
   deliveryNotes: string;
+  deliveryMethod?: "delivery" | "pickup";
   expectedCurrency: string;
   expectedSubtotalCents: number;
   lines: CheckoutOrderLine[];
@@ -101,7 +102,7 @@ async function validateCheckoutInventory(lines: CheckoutOrderLine[]) {
 export async function createCheckoutOrder(input: CreateCheckoutOrderInput) {
   await validateCheckoutInventory(input.lines);
   const supabase = createSupabaseServiceRoleClient();
-  const { data, error } = await supabase.rpc("create_checkout_order", {
+  const { data, error } = await supabase.rpc(input.deliveryMethod === "pickup" ? "create_checkout_pickup_order" : "create_checkout_order", {
     p_auth_user_id: input.authUserId,
     p_customer_email: input.customerEmail,
     p_customer_id: input.customerId,

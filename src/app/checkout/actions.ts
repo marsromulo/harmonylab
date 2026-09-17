@@ -10,6 +10,7 @@ import {
 import { normalizeEmail, normalizeHongKongPhone } from "@/lib/customer-fields";
 import { ensureCustomerProfile, upsertDefaultCustomerAddress } from "@/lib/customers";
 import { validateMemberReferralCode } from "@/lib/referrals";
+import { OFFICE_PICKUP } from "@/lib/pickup";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
 import { createWonderPaymentLink, getSiteUrl } from "@/lib/wonder";
 
@@ -70,12 +71,13 @@ export async function createCheckoutOrderAction(formData: FormData) {
   const email = user.is_anonymous
     ? normalizeEmail(getString(formData, "email"))
     : user.email ?? "";
-  const shippingAddressLine1 = getString(formData, "shipping_address_line1");
-  const shippingAddressLine2 = getString(formData, "shipping_address_line2");
-  const shippingCity = getString(formData, "shipping_city");
-  const shippingRegion = getString(formData, "shipping_region");
-  const shippingPostalCode = getString(formData, "shipping_postal_code");
-  const shippingCountry = getShippingCountry(getString(formData, "shipping_country"));
+  const isPickup = getString(formData, "delivery_method") === "pickup";
+  const shippingAddressLine1 = isPickup ? OFFICE_PICKUP.addressLine1 : getString(formData, "shipping_address_line1");
+  const shippingAddressLine2 = isPickup ? OFFICE_PICKUP.addressLine2 : getString(formData, "shipping_address_line2");
+  const shippingCity = isPickup ? OFFICE_PICKUP.city : getString(formData, "shipping_city");
+  const shippingRegion = isPickup ? OFFICE_PICKUP.region : getString(formData, "shipping_region");
+  const shippingPostalCode = isPickup ? "" : getString(formData, "shipping_postal_code");
+  const shippingCountry = isPickup ? OFFICE_PICKUP.country : getShippingCountry(getString(formData, "shipping_country"));
   const deliveryNotes = getString(formData, "delivery_notes");
   const customerAddressId = getString(formData, "customer_address_id");
   const paymentMethod = getPaymentMethod(getString(formData, "payment_method"));
@@ -90,7 +92,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
     !lastName ||
     !shippingAddressLine1 ||
     !shippingCity ||
-    (user.is_anonymous && !phone)
+    ((user.is_anonymous || isPickup) && !phone)
   ) {
     redirect("/checkout?error=shipping-invalid");
   }
@@ -127,7 +129,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
     country: shippingCountry,
   };
 
-  if (customerAddressId) {
+  if (!isPickup && customerAddressId) {
     const { error: defaultResetError } = await supabase
       .from("customer_addresses")
       .update({ is_default: false })
@@ -158,7 +160,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
     if (addressUpdateError) {
       throw new Error(`Unable to update customer address: ${addressUpdateError.message}`);
     }
-  } else {
+  } else if (!isPickup) {
     await upsertDefaultCustomerAddress(customer.id, addressPayload);
   }
 
@@ -172,6 +174,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
       customerId: customer.id,
       customerName: fullName || customer.fullName || user.email || "Customer",
       deliveryNotes,
+      deliveryMethod: isPickup ? "pickup" : "delivery",
       expectedCurrency: currency,
       expectedSubtotalCents: cart.subtotalCents,
       lines: cart.lines.map((line) => ({

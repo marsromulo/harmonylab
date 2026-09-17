@@ -1,11 +1,15 @@
 import { getCartSummary } from "@/lib/cart";
 import { getCheckoutDiscountQuote } from "@/lib/discounts";
+import { getPickupQuote } from "@/lib/pickup";
 
 export async function POST(request: Request) {
-  let body: { referralCode?: unknown };
+  let body: { referralCode?: unknown; deliveryMethod?: unknown };
 
   try {
-    body = (await request.json()) as { referralCode?: unknown };
+    body = (await request.json()) as typeof body;
+    if (!body || typeof body !== "object") {
+      return Response.json({ error: "Invalid quote request." }, { status: 400 });
+    }
   } catch {
     return Response.json({ error: "Invalid quote request." }, { status: 400 });
   }
@@ -32,7 +36,7 @@ export async function POST(request: Request) {
       referralCode,
       subtotalCents: cart.subtotalCents,
     });
-    return Response.json(quote);
+    return Response.json(body.deliveryMethod === "pickup" ? getPickupQuote(quote) : quote);
   } catch (error) {
     console.error("Checkout quote failed:", error);
     return Response.json({ error: "Unable to calculate checkout total." }, { status: 500 });

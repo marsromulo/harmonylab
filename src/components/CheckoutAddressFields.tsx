@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CustomerAddress, CustomerProfile } from "@/lib/customers";
 import { getHongKongPhoneLocalNumber } from "@/lib/customer-fields";
+import { OFFICE_PICKUP } from "@/lib/pickup";
 
 const regionOptions = ["Hong Kong", "Kowloon", "New Territories"];
 const countryOptions = ["Hong Kong", "Philippines"];
@@ -24,6 +25,8 @@ export function CheckoutAddressFields({
 }) {
   const defaultAddressId = addresses.find((address) => address.isDefault)?.id ?? addresses[0]?.id ?? "";
   const [selectedAddressId, setSelectedAddressId] = useState(defaultAddressId);
+  const [deliveryMethod, setDeliveryMethod] = useState("delivery");
+  const isPickup = deliveryMethod === "pickup";
   const [guestHydrated, setGuestHydrated] = useState(!isGuest);
   const [localEmailError, setLocalEmailError] = useState("");
   const [dismissedEmailError, setDismissedEmailError] = useState<string | null>(null);
@@ -107,7 +110,21 @@ export function CheckoutAddressFields({
 
   return (
     <div className="checkout-address-fields">
-      {addresses.length > 0 ? (
+      <label>
+        Delivery method
+        <select name="delivery_method" value={deliveryMethod} onChange={(event) => setDeliveryMethod(event.target.value)}>
+          <option value="delivery">Delivery</option>
+          <option value="pickup">{OFFICE_PICKUP.label}</option>
+        </select>
+      </label>
+      {isPickup ? (
+        <div className="checkout-pickup-address">
+          <strong>{OFFICE_PICKUP.label}</strong>
+          <p>{OFFICE_PICKUP.addressLine1}<br />{OFFICE_PICKUP.city}, {OFFICE_PICKUP.country}</p>
+          <span>Free pickup</span>
+        </div>
+      ) : null}
+      {!isPickup && addresses.length > 0 ? (
         <label>
           Use saved address
           <select name="customer_address_id" value={selectedAddressId} onChange={(event) => selectAddress(event.target.value)}>
@@ -184,69 +201,73 @@ export function CheckoutAddressFields({
             name="phone"
             onChange={(event) => updateValue("phone", event.target.value.replace(/\D/g, "").slice(0, 8))}
             pattern="[0-9]{8}"
-            required={isGuest}
+            required={isGuest || isPickup}
             type="tel"
             value={values.phone}
           />
         </span>
       </label>
+      {!isPickup ? (
+        <>
+          <label>
+            Shipping address
+            <input
+              name="shipping_address_line1"
+              required
+              placeholder="Street address, building, flat"
+              autoComplete="address-line1"
+              onChange={(event) => updateValue("addressLine1", event.target.value)}
+              value={values.addressLine1}
+            />
+          </label>
+          <label>
+            Address line 2
+            <input
+              autoComplete="address-line2"
+              name="shipping_address_line2"
+              onChange={(event) => updateValue("addressLine2", event.target.value)}
+              placeholder="Optional"
+              value={values.addressLine2}
+            />
+          </label>
+          <div className="account-form-split">
+            <label>
+              District / City
+              <input
+                autoComplete="address-level2"
+                name="shipping_city"
+                onChange={(event) => updateValue("city", event.target.value)}
+                required
+                value={values.city}
+              />
+            </label>
+            <label>
+              Region
+              <select name="shipping_region" value={values.region} onChange={(event) => updateValue("region", event.target.value)}>
+                {regionOptions.map((region) => (
+                  <option key={region} value={region}>
+                    {region}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <input name="shipping_postal_code" type="hidden" value={values.postalCode} />
+          <label>
+            Country
+            <select name="shipping_country" required value={values.country} onChange={(event) => updateValue("country", event.target.value)}>
+              {countryOptions.map((country) => (
+                <option key={country} value={country} disabled={country === "Philippines"}>
+                  {country}
+                </option>
+              ))}
+            </select>
+          </label>
+        </>
+      ) : null}
       <label>
-        Shipping address
-        <input
-          name="shipping_address_line1"
-          required
-          placeholder="Street address, building, flat"
-          autoComplete="address-line1"
-          onChange={(event) => updateValue("addressLine1", event.target.value)}
-          value={values.addressLine1}
-        />
-      </label>
-      <label>
-        Address line 2
-        <input
-          autoComplete="address-line2"
-          name="shipping_address_line2"
-          onChange={(event) => updateValue("addressLine2", event.target.value)}
-          placeholder="Optional"
-          value={values.addressLine2}
-        />
-      </label>
-      <div className="account-form-split">
-        <label>
-          District / City
-          <input
-            autoComplete="address-level2"
-            name="shipping_city"
-            onChange={(event) => updateValue("city", event.target.value)}
-            required
-            value={values.city}
-          />
-        </label>
-        <label>
-          Region
-          <select name="shipping_region" value={values.region} onChange={(event) => updateValue("region", event.target.value)}>
-            {regionOptions.map((region) => (
-              <option key={region} value={region}>
-                {region}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <input name="shipping_postal_code" type="hidden" value={values.postalCode} />
-      <label>
-        Country
-        <select name="shipping_country" required value={values.country} onChange={(event) => updateValue("country", event.target.value)}>
-          {countryOptions.map((country) => (
-            <option key={country} value={country} disabled={country === "Philippines"}>
-              {country}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        Delivery notes
-        <textarea name="delivery_notes" rows={4} placeholder="Optional delivery notes" />
+        {isPickup ? "Pickup notes" : "Delivery notes"}
+        <textarea name="delivery_notes" rows={4} placeholder={isPickup ? "Optional pickup notes" : "Optional delivery notes"} />
       </label>
     </div>
   );

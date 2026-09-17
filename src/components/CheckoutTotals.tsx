@@ -26,6 +26,7 @@ export function CheckoutTotals({
   subtotalCents,
 }: CheckoutTotalsProps) {
   const [quote, setQuote] = useState(initialQuote);
+  const [isPickup, setIsPickup] = useState(false);
 
   useEffect(() => {
     const formElement = document.getElementById(formId);
@@ -42,6 +43,7 @@ export function CheckoutTotals({
       const referralInput = form.elements.namedItem("referral_code");
       const referralCode =
         referralInput instanceof HTMLInputElement ? referralInput.value : "";
+      const deliveryMethod = new FormData(form).get("delivery_method") === "pickup" ? "pickup" : "delivery";
       controller?.abort();
       controller = new AbortController();
 
@@ -49,7 +51,7 @@ export function CheckoutTotals({
         const response = await fetch("/api/checkout/quote", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ referralCode }),
+          body: JSON.stringify({ referralCode, deliveryMethod }),
           signal: controller.signal,
         });
 
@@ -66,11 +68,14 @@ export function CheckoutTotals({
     function handleInput(event: Event) {
       const target = event.target;
 
-      if (!(target instanceof HTMLInputElement) || target.name !== "referral_code") {
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement) ||
+        !["referral_code", "delivery_method"].includes(target.name)) {
         return;
       }
 
       clearTimeout(timeoutId);
+      controller?.abort();
+      setIsPickup(new FormData(form).get("delivery_method") === "pickup");
       timeoutId = setTimeout(updateQuote, 250);
     }
 
@@ -94,7 +99,7 @@ export function CheckoutTotals({
         <strong>{formatMoney(subtotalCents, currency)}</strong>
       </div>
       <div className="checkout-total">
-        <span>Shipping</span>
+        <span>{isPickup ? "Pickup" : "Shipping"}</span>
         <strong>{formatMoney(quote.shippingCents, currency)}</strong>
       </div>
       {quote.discountCents > 0 ? (
