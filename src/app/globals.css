@@ -3112,6 +3112,58 @@ body {
   margin-bottom: 14px;
 }
 
+.admin-orders-sort {
+  color: var(--admin-orange);
+  font-size: 13px;
+}
+
+.admin-order-filters,
+.admin-orders-pagination,
+.admin-orders-pagination nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-order-filters {
+  margin-bottom: 18px;
+}
+
+.admin-order-filters a,
+.admin-orders-pagination a,
+.admin-orders-pagination [aria-disabled] {
+  border: 1px solid #e9e5e0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--admin-orange);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.admin-order-filters a[aria-current],
+.admin-order-filters a:hover,
+.admin-orders-pagination a:hover {
+  background: #f8efff;
+  border-color: var(--admin-orange);
+}
+
+.admin-order-filters a[aria-current] {
+  font-weight: 700;
+}
+
+.admin-orders-pagination {
+  justify-content: space-between;
+  margin-top: 20px;
+  color: var(--admin-muted);
+  font-size: 13px;
+}
+
+.admin-orders-pagination [aria-disabled] {
+  color: var(--admin-muted);
+  opacity: 0.5;
+}
+
 .admin-panel h2 {
   font-family: Georgia, "Times New Roman", serif;
   font-size: 20px;

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { requireAdmin } from "@/lib/admin-auth";
-import { formatOrderDate, formatOrderMoney, getAdminOrders, getOrderStatusLabel } from "@/lib/orders";
+import { ADMIN_ORDERS_PAGE_SIZE, adminOrderFilters, type AdminOrderFilter, formatOrderDate, formatOrderMoney, getAdminOrdersPage, getOrderStatusLabel } from "@/lib/orders";
 
 export const metadata: Metadata = {
   title: "Orders | Harmony Lab Admin",
@@ -14,10 +14,23 @@ function getCustomerLabel(customerName: string | null, customerEmail: string | n
   return customerName || customerEmail || "Guest customer";
 }
 
-export default async function AdminOrdersPage() {
+function ordersHref(status: AdminOrderFilter, page = 1) {
+  return `/admin/orders?status=${status}&page=${page}`;
+}
+
+const filterLabels: Record<AdminOrderFilter, string> = {
+  all: "All orders", unpaid: "Unpaid", paid: "Paid", shipped: "Shipped", completed: "Completed",
+};
+
+export default async function AdminOrdersPage({ searchParams }: {
+  searchParams: Promise<{ status?: string | string[]; page?: string | string[] }>;
+}) {
   await connection();
   await requireAdmin();
-  const orders = await getAdminOrders(100);
+  const params = await searchParams;
+  const status = adminOrderFilters.find((filter) => filter === params.status) ?? "all";
+  const requestedPage = typeof params.page === "string" && /^\d+$/.test(params.page) ? Number(params.page) : 1;
+  const { orders, total, page, totalPages } = await getAdminOrdersPage(status, requestedPage);
 
   return (
     <AdminShell active="orders">
@@ -26,14 +39,22 @@ export default async function AdminOrdersPage() {
           <p className="admin-eyebrow">ORDER MANAGEMENT</p>
           <h1>Orders</h1>
         </div>
-        <span>{orders.length} orders</span>
+        <span>{total} {status === "all" ? "orders" : `${filterLabels[status].toLowerCase()} orders`}</span>
       </section>
 
       <section className="admin-panel admin-table-panel admin-orders-panel">
         <div className="admin-panel-head">
           <h2>Order Items</h2>
-          <a>Newest First</a>
+          <span className="admin-orders-sort">Newest First</span>
         </div>
+
+        <nav className="admin-order-filters" aria-label="Filter orders by status">
+          {adminOrderFilters.map((filter) => (
+            <Link key={filter} href={ordersHref(filter)} aria-current={status === filter ? "page" : undefined}>
+              {filterLabels[filter]}
+            </Link>
+          ))}
+        </nav>
 
         {orders.length > 0 ? (
           <table>
@@ -75,15 +96,27 @@ export default async function AdminOrdersPage() {
                     )}
                   </td>
                   <td>
-                    <span className={`admin-status ${order.status}`}>{getOrderStatusLabel(order.status)}</span>
+                    <span className={`admin-status ${order.status}`}>
+                      {order.status === "pending" ? "Unpaid" : order.status === "delivered" ? "Completed" : getOrderStatusLabel(order.status)}
+                    </span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <p className="admin-empty-state">No orders have been placed yet.</p>
+          <p className="admin-empty-state">{status === "all" ? "No orders have been placed yet." : `No ${filterLabels[status].toLowerCase()} orders found.`}</p>
         )}
+        <div className="admin-orders-pagination">
+          <span>
+            Showing {orders.length ? (page - 1) * ADMIN_ORDERS_PAGE_SIZE + 1 : 0}–{orders.length ? (page - 1) * ADMIN_ORDERS_PAGE_SIZE + orders.length : 0} of {total} orders
+          </span>
+          <nav aria-label="Orders pagination">
+            {page > 1 ? <Link href={ordersHref(status, page - 1)}>Previous</Link> : <span aria-disabled="true">Previous</span>}
+            <span>Page {page} of {totalPages}</span>
+            {page < totalPages ? <Link href={ordersHref(status, page + 1)}>Next</Link> : <span aria-disabled="true">Next</span>}
+          </nav>
+        </div>
       </section>
     </AdminShell>
   );

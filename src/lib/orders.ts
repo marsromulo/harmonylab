@@ -354,6 +354,51 @@ export async function getAdminOrders(limit = 100) {
   return (data as unknown as StoreOrderRow[]).map(mapOrder);
 }
 
+export const ADMIN_ORDERS_PAGE_SIZE = 25;
+export const adminOrderFilters = ["all", "unpaid", "paid", "shipped", "completed"] as const;
+export type AdminOrderFilter = (typeof adminOrderFilters)[number];
+
+const adminOrderFilterStatuses: Record<Exclude<AdminOrderFilter, "all">, OrderStatus[]> = {
+  unpaid: ["pending"],
+  paid: ["paid", "processing"],
+  shipped: ["shipped"],
+  completed: ["delivered"],
+};
+
+export async function getAdminOrdersPage(status: AdminOrderFilter, requestedPage: number) {
+  const supabase = await createSupabaseAuthServerClient();
+  let countQuery = supabase.from("orders").select("id", { count: "exact", head: true });
+  if (status !== "all") {
+    countQuery = countQuery.in("status", adminOrderFilterStatuses[status]);
+  }
+  const { count, error: countError } = await countQuery;
+  if (countError) {
+    throw new Error(`Unable to count orders: ${countError.message}`);
+  }
+
+  const total = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / ADMIN_ORDERS_PAGE_SIZE));
+  const page = Math.min(totalPages, Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1);
+  const offset = (page - 1) * ADMIN_ORDERS_PAGE_SIZE;
+  const loadPage = (columns: string) => {
+    let query = supabase.from("orders").select(columns);
+    if (status !== "all") {
+      query = query.in("status", adminOrderFilterStatuses[status]);
+    }
+    return query.order("created_at", { ascending: false }).order("id", { ascending: false })
+      .range(offset, offset + ADMIN_ORDERS_PAGE_SIZE - 1);
+  };
+
+  let { data, error } = await loadPage(orderSelect);
+  if (error && isMissingFulfillmentColumnError(error.message)) {
+    ({ data, error } = await loadPage(baseOrderSelect));
+  }
+  if (error) {
+    throw new Error(`Unable to load orders: ${error.message}`);
+  }
+  return { orders: ((data ?? []) as unknown as StoreOrderRow[]).map(mapOrder), total, page, totalPages };
+}
+
 export async function getCustomerOrders(customerId: string, limit = 20) {
   const supabase = await createSupabaseAuthServerClient();
   let { data, error } = await supabase
