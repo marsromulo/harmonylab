@@ -165,6 +165,10 @@ export default async function AdminOrderDetailPage({ params, searchParams }: Adm
               <dt>Email</dt>
               <dd>{order.customerEmail ?? customer?.email ?? "Not provided"}</dd>
             </div>
+            <div>
+              <dt>Telephone</dt>
+              <dd>{customer?.phone || "Not provided"}</dd>
+            </div>
           </dl>
         </div>
 

@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
   try {
     const quote = await getCheckoutDiscountQuote({
-      country: "Hong Kong",
+      country: body.deliveryMethod === "outside_hk" ? "Outside Hong Kong" : "Hong Kong",
       currency,
       referralCode,
       subtotalCents: cart.subtotalCents,

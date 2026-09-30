@@ -7,7 +7,7 @@ import {
   isCheckoutInventoryError,
   setOrderWonderPayment,
 } from "@/lib/checkout";
-import { normalizeEmail, normalizeHongKongPhone } from "@/lib/customer-fields";
+import { normalizeEmail, normalizeHongKongPhone, normalizeInternationalPhone } from "@/lib/customer-fields";
 import { ensureCustomerProfile, upsertDefaultCustomerAddress } from "@/lib/customers";
 import { validateMemberReferralCode } from "@/lib/referrals";
 import { OFFICE_PICKUP } from "@/lib/pickup";
@@ -25,12 +25,6 @@ function getPaymentMethod(value: string) {
   }
 
   return "credit_card";
-}
-
-const supportedShippingCountries = new Set(["Hong Kong"]);
-
-function getShippingCountry(value: string) {
-  return supportedShippingCountries.has(value) ? value : "Hong Kong";
 }
 
 export async function createCheckoutOrderAction(formData: FormData) {
@@ -67,7 +61,14 @@ export async function createCheckoutOrderAction(formData: FormData) {
   const firstName = getString(formData, "first_name");
   const lastName = getString(formData, "last_name");
   const fullName = [firstName, lastName].filter(Boolean).join(" ");
-  const phone = normalizeHongKongPhone(getString(formData, "phone"));
+  const deliveryMethod = getString(formData, "delivery_method");
+  if (!["delivery", "pickup", "outside_hk"].includes(deliveryMethod)) {
+    redirect("/checkout?error=shipping-invalid");
+  }
+  const isOutsideHK = deliveryMethod === "outside_hk";
+  const phone = isOutsideHK
+    ? normalizeInternationalPhone(getString(formData, "phone"))
+    : normalizeHongKongPhone(getString(formData, "phone"));
   const email = user.is_anonymous
     ? normalizeEmail(getString(formData, "email"))
     : user.email ?? "";
@@ -77,7 +78,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
   const shippingCity = isPickup ? OFFICE_PICKUP.city : getString(formData, "shipping_city");
   const shippingRegion = isPickup ? OFFICE_PICKUP.region : getString(formData, "shipping_region");
   const shippingPostalCode = isPickup ? "" : getString(formData, "shipping_postal_code");
-  const shippingCountry = isPickup ? OFFICE_PICKUP.country : getShippingCountry(getString(formData, "shipping_country"));
+  const shippingCountry = isPickup ? OFFICE_PICKUP.country : (isOutsideHK ? getString(formData, "shipping_country") : "Hong Kong");
   const deliveryNotes = getString(formData, "delivery_notes");
   const customerAddressId = getString(formData, "customer_address_id");
   const paymentMethod = getPaymentMethod(getString(formData, "payment_method"));
@@ -92,7 +93,14 @@ export async function createCheckoutOrderAction(formData: FormData) {
     !lastName ||
     !shippingAddressLine1 ||
     !shippingCity ||
-    ((user.is_anonymous || isPickup) && !phone)
+    ((user.is_anonymous || isPickup || isOutsideHK) && !phone) ||
+    (isOutsideHK && (
+      !shippingPostalCode ||
+      shippingPostalCode.length > 20 ||
+      !shippingCountry ||
+      shippingCountry.length > 100 ||
+      /^(hong\s*kong|hk|hkg|hong kong sar)$/i.test(shippingCountry)
+    ))
   ) {
     redirect("/checkout?error=shipping-invalid");
   }

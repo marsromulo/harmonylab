@@ -6,7 +6,6 @@ import { getHongKongPhoneLocalNumber } from "@/lib/customer-fields";
 import { OFFICE_PICKUP } from "@/lib/pickup";
 
 const regionOptions = ["Hong Kong", "Kowloon", "New Territories"];
-const countryOptions = ["Hong Kong", "Philippines"];
 
 function getAddressLabel(address: CustomerAddress) {
   return address.label || [address.addressLine1, address.city, address.region].filter(Boolean).join(", ");
@@ -25,7 +24,11 @@ export function CheckoutAddressFields({
 }) {
   const defaultAddressId = addresses.find((address) => address.isDefault)?.id ?? addresses[0]?.id ?? "";
   const [selectedAddressId, setSelectedAddressId] = useState(defaultAddressId);
-  const [deliveryMethod, setDeliveryMethod] = useState("delivery");
+  const defaultAddress = addresses.find((address) => address.id === defaultAddressId);
+  const [deliveryMethod, setDeliveryMethod] = useState(
+    defaultAddress && defaultAddress.country !== "Hong Kong" ? "outside_hk" : "delivery",
+  );
+  const isOutsideHK = deliveryMethod === "outside_hk";
   const isPickup = deliveryMethod === "pickup";
   const [guestHydrated, setGuestHydrated] = useState(!isGuest);
   const [localEmailError, setLocalEmailError] = useState("");
@@ -39,6 +42,8 @@ export function CheckoutAddressFields({
     firstName: selectedAddress?.firstName ?? profile?.firstName ?? "",
     lastName: selectedAddress?.lastName ?? profile?.lastName ?? "",
     phone: getHongKongPhoneLocalNumber(selectedAddress?.phone ?? profile?.phone),
+    internationalPhone: selectedAddress?.phone ?? profile?.phone ?? "",
+    internationalCountry: selectedAddress?.country !== "Hong Kong" ? selectedAddress?.country ?? "" : "",
     addressLine1: selectedAddress?.addressLine1 ?? "",
     addressLine2: selectedAddress?.addressLine2 ?? "",
     city: selectedAddress?.city ?? "",
@@ -93,11 +98,14 @@ export function CheckoutAddressFields({
     const address = addresses.find((candidate) => candidate.id === addressId);
 
     if (address) {
+      setDeliveryMethod(address.country === "Hong Kong" ? "delivery" : "outside_hk");
       setValues((current) => ({
         ...current,
         firstName: address.firstName ?? profile?.firstName ?? "",
         lastName: address.lastName ?? profile?.lastName ?? "",
         phone: getHongKongPhoneLocalNumber(address.phone ?? profile?.phone),
+        internationalPhone: address.phone ?? profile?.phone ?? "",
+        internationalCountry: address.country === "Hong Kong" ? "" : address.country,
         addressLine1: address.addressLine1,
         addressLine2: address.addressLine2 ?? "",
         city: address.city,
@@ -113,7 +121,8 @@ export function CheckoutAddressFields({
       <label>
         Delivery method
         <select name="delivery_method" value={deliveryMethod} onChange={(event) => setDeliveryMethod(event.target.value)}>
-          <option value="delivery">Delivery</option>
+          <option value="delivery">Delivery — Hong Kong</option>
+          <option value="outside_hk">Outside Hong Kong</option>
           <option value="pickup">{OFFICE_PICKUP.label}</option>
         </select>
       </label>
@@ -190,7 +199,22 @@ export function CheckoutAddressFields({
           />
         </label>
       </div>
-      <label>
+      {isOutsideHK ? (
+        <label>
+          Mobile number (including country code)
+          <input
+            autoComplete="tel"
+            name="phone"
+            type="tel"
+            required
+            maxLength={25}
+            placeholder="+63 917 123 4567"
+            pattern={"[+][0-9\\s\\(\\)\\-]{7,24}"}
+            onChange={(event) => updateValue("internationalPhone", event.target.value)}
+            value={values.internationalPhone}
+          />
+        </label>
+      ) : <label>
         Phone
         <span className="phone-prefix-field">
           <b>+852</b>
@@ -206,19 +230,29 @@ export function CheckoutAddressFields({
             value={values.phone}
           />
         </span>
-      </label>
+      </label>}
       {!isPickup ? (
         <>
           <label>
-            Shipping address
-            <input
+            {isOutsideHK ? "Full address" : "Shipping address"}
+            {isOutsideHK ? (
+              <textarea
+                name="shipping_address_line1"
+                autoComplete="street-address"
+                required
+                rows={3}
+                placeholder="House / flat, building, street, and locality"
+                onChange={(event) => updateValue("addressLine1", event.target.value)}
+                value={values.addressLine1}
+              />
+            ) : <input
               name="shipping_address_line1"
               required
               placeholder="Street address, building, flat"
               autoComplete="address-line1"
               onChange={(event) => updateValue("addressLine1", event.target.value)}
               value={values.addressLine1}
-            />
+            />}
           </label>
           <label>
             Address line 2
@@ -243,26 +277,48 @@ export function CheckoutAddressFields({
             </label>
             <label>
               Region
-              <select name="shipping_region" value={values.region} onChange={(event) => updateValue("region", event.target.value)}>
+              {isOutsideHK ? <input
+                name="shipping_region"
+                autoComplete="address-level1"
+                placeholder="State / province (optional)"
+                onChange={(event) => updateValue("region", event.target.value)}
+                value={regionOptions.includes(values.region) ? "" : values.region}
+              /> : <select name="shipping_region" value={regionOptions.includes(values.region) ? values.region : "Hong Kong"} onChange={(event) => updateValue("region", event.target.value)}>
                 {regionOptions.map((region) => (
                   <option key={region} value={region}>
                     {region}
                   </option>
                 ))}
-              </select>
+              </select>}
             </label>
           </div>
-          <input name="shipping_postal_code" type="hidden" value={values.postalCode} />
-          <label>
-            Country
-            <select name="shipping_country" required value={values.country} onChange={(event) => updateValue("country", event.target.value)}>
-              {countryOptions.map((country) => (
-                <option key={country} value={country} disabled={country === "Philippines"}>
-                  {country}
-                </option>
-              ))}
-            </select>
-          </label>
+          {isOutsideHK ? (
+            <>
+              <label>
+                ZIP / Postal code
+                <input
+                  name="shipping_postal_code"
+                  autoComplete="postal-code"
+                  required
+                  maxLength={20}
+                  onChange={(event) => updateValue("postalCode", event.target.value)}
+                  value={values.postalCode}
+                />
+              </label>
+              <label>
+                Country / Territory
+                <input
+                  name="shipping_country"
+                  autoComplete="country-name"
+                  required
+                  maxLength={100}
+                  placeholder="Destination country / territory"
+                  onChange={(event) => updateValue("internationalCountry", event.target.value)}
+                  value={values.internationalCountry}
+                />
+              </label>
+            </>
+          ) : <input name="shipping_country" type="hidden" value="Hong Kong" />}
         </>
       ) : null}
       <label>

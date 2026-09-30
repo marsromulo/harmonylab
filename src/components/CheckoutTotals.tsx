@@ -43,7 +43,7 @@ export function CheckoutTotals({
       const referralInput = form.elements.namedItem("referral_code");
       const referralCode =
         referralInput instanceof HTMLInputElement ? referralInput.value : "";
-      const deliveryMethod = new FormData(form).get("delivery_method") === "pickup" ? "pickup" : "delivery";
+      const deliveryMethod = new FormData(form).get("delivery_method") ?? "delivery";
       controller?.abort();
       controller = new AbortController();
 
@@ -69,7 +69,7 @@ export function CheckoutTotals({
       const target = event.target;
 
       if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement) ||
-        !["referral_code", "delivery_method"].includes(target.name)) {
+        !["referral_code", "delivery_method", "customer_address_id"].includes(target.name)) {
         return;
       }
 
@@ -79,6 +79,7 @@ export function CheckoutTotals({
       timeoutId = setTimeout(updateQuote, 250);
     }
 
+    void updateQuote();
     form.addEventListener("input", handleInput);
 
     return () => {

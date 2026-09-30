@@ -58,6 +58,7 @@ export type OrderRelatedCustomer = {
   email: string | null;
   fullName: string | null;
   referralId: string | null;
+  phone: string | null;
 };
 
 type StoreOrderRow = {
@@ -117,6 +118,7 @@ type RelatedCustomerRow = {
   full_name: string | null;
   last_name: string | null;
   referral_id: string | null;
+  phone: string | null;
 };
 
 type RelatedMemberRow = {
@@ -258,6 +260,7 @@ function mapRelatedCustomer(row: RelatedCustomerRow): OrderRelatedCustomer {
     email: row.email,
     fullName: getRelatedCustomerName(row),
     referralId: row.referral_id,
+    phone: row.phone,
   };
 }
 
@@ -503,14 +506,14 @@ export async function getAdminOrderDetails(orderId: string) {
     mappedOrder.customerId
       ? supabase
           .from("customer_profiles")
-          .select("id,email,first_name,last_name,full_name,referral_id")
+          .select("id,email,first_name,last_name,full_name,referral_id,phone")
           .eq("id", mappedOrder.customerId)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     mappedOrder.referralOwnerCustomerId
       ? supabase
           .from("customer_profiles")
-          .select("id,email,first_name,last_name,full_name,referral_id")
+          .select("id,email,first_name,last_name,full_name,referral_id,phone")
           .eq("id", mappedOrder.referralOwnerCustomerId)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),

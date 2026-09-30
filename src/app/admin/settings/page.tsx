@@ -19,7 +19,7 @@ type AdminSettingsPageProps = {
 const errorMessages: Record<string, string> = {
   "settings-award-failed": "The setting was saved, but existing eligible orders could not be updated.",
   "settings-invalid":
-    "Enter a referral reward rate between 0 and 100 and a valid free shipping minimum.",
+    "Enter a referral reward rate between 0 and 100, a valid free shipping minimum, and an outside Hong Kong fee between HK$0 and HK$1,000,000.",
   "settings-save-failed": "Unable to save the site settings.",
   "shipping-rule-missing": "No active Hong Kong free-shipping rule was found.",
 };
@@ -80,6 +80,19 @@ export default async function AdminSettingsPage({
               type="number"
             />
             <small>{settings.freeShipping.description}</small>
+          </label>
+          <label>
+            {settings.outsideShipping.label}
+            <input
+              defaultValue={settings.outsideShipping.fee}
+              min="0"
+              max="1000000"
+              name="outside_hk_shipping_fee"
+              required
+              step="0.01"
+              type="number"
+            />
+            <small>{settings.outsideShipping.description}</small>
           </label>
           <div className="admin-form-actions">
             <button className="admin-btn" type="submit">

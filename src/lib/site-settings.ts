@@ -2,6 +2,8 @@ import { requireAdmin } from "@/lib/admin-auth";
 
 export const REFERRAL_REWARD_RATE_KEY = "referral_reward_rate_percent";
 export const DEFAULT_FREE_SHIPPING_MINIMUM = 500;
+export const OUTSIDE_HK_SHIPPING_FEE_KEY = "outside_hk_shipping_fee_hkd";
+export const DEFAULT_OUTSIDE_HK_SHIPPING_FEE = 180;
 
 type SiteSettingRow = {
   description: string | null;
@@ -30,6 +32,7 @@ export async function getAdminSiteSettings() {
   const [
     { data: referralData, error: referralError },
     { data: shippingData, error: shippingError },
+    { data: outsideShippingData, error: outsideShippingError },
   ] = await Promise.all([
     supabase
       .from("site_settings")
@@ -47,11 +50,16 @@ export async function getAdminSiteSettings() {
       .order("priority", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    supabase
+      .from("site_settings")
+      .select("setting_value")
+      .eq("setting_key", OUTSIDE_HK_SHIPPING_FEE_KEY)
+      .maybeSingle(),
   ]);
 
-  if (referralError || shippingError) {
+  if (referralError || shippingError || outsideShippingError) {
     throw new Error(
-      `Unable to load site settings: ${referralError?.message ?? shippingError?.message}`,
+      `Unable to load site settings: ${referralError?.message ?? shippingError?.message ?? outsideShippingError?.message}`,
     );
   }
 
@@ -59,6 +67,11 @@ export async function getAdminSiteSettings() {
   const shippingRule = shippingData as ShippingDiscountRuleRow | null;
 
   return {
+    outsideShipping: {
+      fee: getNumericSettingValue(outsideShippingData?.setting_value, DEFAULT_OUTSIDE_HK_SHIPPING_FEE),
+      label: "Outside Hong Kong Shipping Fee (HK$)",
+      description: "Flat shipping fee for deliveries outside Hong Kong. Hong Kong free shipping does not apply.",
+    },
     freeShipping: {
       description:
         "Orders at or above this subtotal receive free shipping in Hong Kong.",

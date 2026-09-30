@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin-auth";
-import { REFERRAL_REWARD_RATE_KEY } from "@/lib/site-settings";
+import { OUTSIDE_HK_SHIPPING_FEE_KEY, REFERRAL_REWARD_RATE_KEY } from "@/lib/site-settings";
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -12,10 +12,16 @@ function getString(formData: FormData, key: string) {
 
 export async function updateSiteSettingsAction(formData: FormData) {
   const { supabase } = await requireAdmin();
+  const outsideShippingFeeInput = getString(formData, "outside_hk_shipping_fee");
+  const outsideShippingFee = Number(outsideShippingFeeInput);
   const rewardRate = Number(getString(formData, "referral_reward_rate_percent"));
   const freeShippingMinimum = Number(getString(formData, "free_shipping_minimum"));
 
   if (
+    !outsideShippingFeeInput ||
+    !Number.isFinite(outsideShippingFee) ||
+    outsideShippingFee < 0 ||
+    outsideShippingFee > 1000000 ||
     !Number.isFinite(rewardRate) ||
     rewardRate < 0 ||
     rewardRate > 100 ||
@@ -48,13 +54,18 @@ export async function updateSiteSettingsAction(formData: FormData) {
   }
 
   const { error } = await supabase.from("site_settings").upsert(
-    {
+    [{
       description:
         "Percentage of the paid order total converted into whole referral points.",
       label: "Referral Reward Rate (%)",
       setting_key: REFERRAL_REWARD_RATE_KEY,
       setting_value: Math.round(rewardRate * 100) / 100,
-    },
+    }, {
+      description: "Flat shipping fee for deliveries outside Hong Kong, in HKD.",
+      label: "Outside Hong Kong Shipping Fee (HK$)",
+      setting_key: OUTSIDE_HK_SHIPPING_FEE_KEY,
+      setting_value: Math.round(outsideShippingFee * 100) / 100,
+    }],
     { onConflict: "setting_key" },
   );
 

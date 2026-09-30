@@ -35,7 +35,7 @@ const errorMessages: Record<string, string> = {
   "payment-unavailable": "That payment method is not available. Please choose another option.",
   "email-required": "Email address is required.",
   "referral-invalid": "That referral code was not found. Contact your referrer for the correct code or leave it blank.",
-  "shipping-invalid": "Please enter your name, address, and city for delivery.",
+  "shipping-invalid": "Please check your name, address, city, and phone. Outside Hong Kong delivery also requires a destination country, ZIP / postal code, and mobile number with country code.",
   "stock-unavailable": "One or more products no longer have enough stock. Please review your cart.",
 };
 
@@ -56,7 +56,7 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
   const currency = cart.lines[0]?.product.currency ?? "HKD";
   const quote = cart.lines.length > 0
     ? await getCheckoutDiscountQuote({
-        country: "Hong Kong",
+        country: (addresses.find((address) => address.isDefault) ?? addresses[0])?.country ?? "Hong Kong",
         currency,
         referralCode: profile?.referralCode || cookieReferralCode,
         subtotalCents: cart.subtotalCents,
