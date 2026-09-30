@@ -136,7 +136,7 @@ export default function Home() {
                 className="story-video"
                 controls
                 playsInline
-                preload="metadata"
+                preload="none"
                 aria-label="Harmony skincare story"
               >
                 <source src="/media/mainpage-video.mp4" type="video/mp4" />
