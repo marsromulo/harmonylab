@@ -82,3 +82,18 @@ Mastercard 3DS challenge: 5123450000000008
 
 Use any future expiry date and the test checkout's requested security-code format. Production card
 details do not work in Wonder's sandbox.
+
+## Shipping configuration
+
+The live Hong Kong free-shipping minimum was corrected from HK$50 to HK$500 on
+2026-10-01. Verified checkout shipping charges:
+
+- Hong Kong delivery below HK$500 subtotal: HK$50.
+- Hong Kong delivery at or above HK$500 subtotal: free.
+- Outside Hong Kong: HK$180 regardless of subtotal.
+- Harmony Lab office pickup: free.
+
+Admin Settings controls the free-shipping minimum and outside Hong Kong fee.
+These values are stored in Supabase; redeploying the website does not reset them
+or recalculate existing orders. Apply `supabase/032_outside_hong_kong_shipping.sql`
+when setting up a database before enabling outside Hong Kong checkout.
