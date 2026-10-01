@@ -130,18 +130,15 @@ export default function Home() {
 
         <section className="new-section section-story" aria-labelledby="story-heading">
           <div className="store-container story-layout">
-            <div className="story-video-wrap">
-              <video
-                id="harmony-story-video"
-                className="story-video"
-                controls
-                playsInline
-                preload="none"
-                aria-label="Harmony skincare story"
-              >
-                <source src="/media/mainpage-video.mp4" type="video/mp4" />
-                Your browser does not support the video element.
-              </video>
+            <div className="story-image-wrap">
+              <Image
+                src="/media/harmony-story.jpg"
+                alt="Woman with glowing skin from the Harmony skincare story"
+                className="story-image"
+                width={848}
+                height={480}
+                sizes="(max-width: 989px) calc(100vw - 32px), 680px"
+              />
             </div>
 
             <div className="section-copy story-copy">
@@ -151,9 +148,6 @@ export default function Home() {
                 We blend advanced science with gentle, effective ingredients to help your skin look and feel its
                 best—every day.
               </p>
-              <a className="new-btn new-btn-primary story-button" href="/media/mainpage-video.mp4">
-                Watch Our Story
-              </a>
             </div>
           </div>
         </section>

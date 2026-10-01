@@ -6231,14 +6231,14 @@ body {
   grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.85fr);
 }
 
-.story-video-wrap {
+.story-image-wrap {
   background: #eadff0;
   border-radius: 8px;
   box-shadow: var(--new-shadow-soft);
   overflow: hidden;
 }
 
-.story-video {
+.story-image {
   aspect-ratio: 16 / 9;
   display: block;
   height: auto;
