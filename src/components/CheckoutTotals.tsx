@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { CheckoutDiscountQuote } from "@/lib/discounts";
+import { getPickupQuote } from "@/lib/pickup";
 
 type CheckoutTotalsProps = {
   currency: string;
@@ -27,6 +28,7 @@ export function CheckoutTotals({
 }: CheckoutTotalsProps) {
   const [quote, setQuote] = useState(initialQuote);
   const [isPickup, setIsPickup] = useState(false);
+  const displayedQuote = isPickup ? getPickupQuote(quote) : quote;
 
   useEffect(() => {
     const formElement = document.getElementById(formId);
@@ -45,18 +47,23 @@ export function CheckoutTotals({
         referralInput instanceof HTMLInputElement ? referralInput.value : "";
       const deliveryMethod = new FormData(form).get("delivery_method") ?? "delivery";
       controller?.abort();
-      controller = new AbortController();
+      const requestController = new AbortController();
+      controller = requestController;
+      setIsPickup(deliveryMethod === "pickup");
 
       try {
         const response = await fetch("/api/checkout/quote", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ referralCode, deliveryMethod }),
-          signal: controller.signal,
+          signal: requestController.signal,
         });
 
         if (response.ok) {
-          setQuote((await response.json()) as CheckoutDiscountQuote);
+          const nextQuote = (await response.json()) as CheckoutDiscountQuote;
+          if (!requestController.signal.aborted) {
+            setQuote(nextQuote);
+          }
         }
       } catch (error) {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
@@ -81,9 +88,11 @@ export function CheckoutTotals({
 
     void updateQuote();
     form.addEventListener("input", handleInput);
+    form.addEventListener("change", handleInput);
 
     return () => {
       form.removeEventListener("input", handleInput);
+      form.removeEventListener("change", handleInput);
       clearTimeout(timeoutId);
       controller?.abort();
     };
@@ -101,17 +110,17 @@ export function CheckoutTotals({
       </div>
       <div className="checkout-total">
         <span>{isPickup ? "Pickup" : "Shipping"}</span>
-        <strong>{formatMoney(quote.shippingCents, currency)}</strong>
+        <strong>{formatMoney(displayedQuote.shippingCents, currency)}</strong>
       </div>
-      {quote.discountCents > 0 ? (
+      {displayedQuote.discountCents > 0 ? (
         <div className="checkout-total discount">
           <span>Discount</span>
-          <strong>-{formatMoney(quote.discountCents, currency)}</strong>
+          <strong>-{formatMoney(displayedQuote.discountCents, currency)}</strong>
         </div>
       ) : null}
       <div className="checkout-total grand">
         <span>Total</span>
-        <strong>{formatMoney(quote.totalCents, currency)}</strong>
+        <strong>{formatMoney(displayedQuote.totalCents, currency)}</strong>
       </div>
     </>
   );
