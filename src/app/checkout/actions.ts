@@ -7,7 +7,7 @@ import {
   isCheckoutInventoryError,
   setOrderWonderPayment,
 } from "@/lib/checkout";
-import { normalizeEmail, normalizeHongKongPhone, normalizeInternationalPhone } from "@/lib/customer-fields";
+import { normalizeEmail, normalizePhone } from "@/lib/customer-fields";
 import { ensureCustomerProfile, upsertDefaultCustomerAddress } from "@/lib/customers";
 import { validateMemberReferralCode } from "@/lib/referrals";
 import { OFFICE_PICKUP } from "@/lib/pickup";
@@ -66,9 +66,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
     redirect("/checkout?error=shipping-invalid");
   }
   const isOutsideHK = deliveryMethod === "outside_hk";
-  const phone = isOutsideHK
-    ? normalizeInternationalPhone(getString(formData, "phone"))
-    : normalizeHongKongPhone(getString(formData, "phone"));
+  const phone = normalizePhone(getString(formData, "phone"));
   const email = user.is_anonymous
     ? normalizeEmail(getString(formData, "email"))
     : user.email ?? "";
@@ -93,6 +91,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
     !lastName ||
     !shippingAddressLine1 ||
     !shippingCity ||
+    (getString(formData, "phone") && !phone) ||
     ((user.is_anonymous || isPickup || isOutsideHK) && !phone) ||
     (isOutsideHK && (
       !shippingPostalCode ||

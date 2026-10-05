@@ -1,3 +1,4 @@
+import { PhoneInput } from "@/components/PhoneInput";
 import Link from "next/link";
 import { connection } from "next/server";
 import {
@@ -21,7 +22,6 @@ import {
   getPaymentMethodLabel,
   getPaymentProviderLabel,
 } from "@/lib/orders";
-import { getHongKongPhoneLocalNumber } from "@/lib/customer-fields";
 
 type AccountPageProps = {
   searchParams: Promise<{
@@ -76,17 +76,7 @@ function AddressFields({ address, profile }: { address?: CustomerAddress; profil
       </div>
       <label>
         Phone
-        <span className="phone-prefix-field">
-          <b>+852</b>
-          <input
-            inputMode="numeric"
-            maxLength={8}
-            name="phone"
-            pattern="[0-9]{8}"
-            type="tel"
-            defaultValue={getHongKongPhoneLocalNumber(address?.phone ?? profile?.phone)}
-          />
-        </span>
+        <PhoneInput defaultValue={address?.phone ?? profile?.phone ?? ""} />
       </label>
       <label>
         Shipping address
@@ -320,10 +310,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
               </label>
               <label>
                 Phone
-                <span className="phone-prefix-field">
-                  <b>+852</b>
-                  <input inputMode="numeric" maxLength={8} name="phone" pattern="[0-9]{8}" type="tel" />
-                </span>
+                <PhoneInput />
               </label>
               <label>
                 Password

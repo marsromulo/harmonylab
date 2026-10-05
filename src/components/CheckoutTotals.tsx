@@ -110,7 +110,7 @@ export function CheckoutTotals({
       </div>
       <div className="checkout-total">
         <span>{isPickup ? "Pickup" : "Shipping"}</span>
-        <strong>{formatMoney(displayedQuote.shippingCents, currency)}</strong>
+        <strong>{isPickup ? "Free" : formatMoney(displayedQuote.shippingCents, currency)}</strong>
       </div>
       {displayedQuote.discountCents > 0 ? (
         <div className="checkout-total discount">

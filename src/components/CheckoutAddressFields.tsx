@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CustomerAddress, CustomerProfile } from "@/lib/customers";
-import { getHongKongPhoneLocalNumber } from "@/lib/customer-fields";
+import { PhoneInput } from "@/components/PhoneInput";
 import { OFFICE_PICKUP } from "@/lib/pickup";
 
 const regionOptions = ["Hong Kong", "Kowloon", "New Territories"];
@@ -41,8 +41,7 @@ export function CheckoutAddressFields({
     email: profile?.email ?? "",
     firstName: selectedAddress?.firstName ?? profile?.firstName ?? "",
     lastName: selectedAddress?.lastName ?? profile?.lastName ?? "",
-    phone: getHongKongPhoneLocalNumber(selectedAddress?.phone ?? profile?.phone),
-    internationalPhone: selectedAddress?.phone ?? profile?.phone ?? "",
+    phone: selectedAddress?.phone ?? profile?.phone ?? "",
     internationalCountry: selectedAddress?.country !== "Hong Kong" ? selectedAddress?.country ?? "" : "",
     addressLine1: selectedAddress?.addressLine1 ?? "",
     addressLine2: selectedAddress?.addressLine2 ?? "",
@@ -103,8 +102,7 @@ export function CheckoutAddressFields({
         ...current,
         firstName: address.firstName ?? profile?.firstName ?? "",
         lastName: address.lastName ?? profile?.lastName ?? "",
-        phone: getHongKongPhoneLocalNumber(address.phone ?? profile?.phone),
-        internationalPhone: address.phone ?? profile?.phone ?? "",
+        phone: address.phone ?? profile?.phone ?? "",
         internationalCountry: address.country === "Hong Kong" ? "" : address.country,
         addressLine1: address.addressLine1,
         addressLine2: address.addressLine2 ?? "",
@@ -199,38 +197,14 @@ export function CheckoutAddressFields({
           />
         </label>
       </div>
-      {isOutsideHK ? (
-        <label>
-          Mobile number (including country code)
-          <input
-            autoComplete="tel"
-            name="phone"
-            type="tel"
-            required
-            maxLength={25}
-            placeholder="+63 917 123 4567"
-            pattern={"[+][0-9\\s\\(\\)\\-]{7,24}"}
-            onChange={(event) => updateValue("internationalPhone", event.target.value)}
-            value={values.internationalPhone}
-          />
-        </label>
-      ) : <label>
+      <label>
         Phone
-        <span className="phone-prefix-field">
-          <b>+852</b>
-          <input
-            autoComplete="tel-national"
-            inputMode="numeric"
-            maxLength={8}
-            name="phone"
-            onChange={(event) => updateValue("phone", event.target.value.replace(/\D/g, "").slice(0, 8))}
-            pattern="[0-9]{8}"
-            required={isGuest || isPickup}
-            type="tel"
-            value={values.phone}
-          />
-        </span>
-      </label>}
+        <PhoneInput
+          required={isGuest || isPickup || isOutsideHK}
+          onChange={(event) => updateValue("phone", event.target.value)}
+          value={values.phone}
+        />
+      </label>
       {!isPickup ? (
         <>
           <label>

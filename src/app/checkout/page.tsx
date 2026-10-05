@@ -1,3 +1,4 @@
+import { PhoneInput } from "@/components/PhoneInput";
 import Image from "next/image";
 import Link from "next/link";
 import { connection } from "next/server";
@@ -150,10 +151,7 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
               </label>
               <label>
                 Phone
-                <span className="phone-prefix-field">
-                  <b>+852</b>
-                  <input inputMode="numeric" maxLength={8} name="phone" pattern="[0-9]{8}" type="tel" />
-                </span>
+                <PhoneInput />
               </label>
               <label>
                 Password

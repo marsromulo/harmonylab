@@ -1,3 +1,9 @@
+// Preserve local numbers and optional country codes without assuming a country.
+export function normalizePhone(value: string) {
+  const normalized = value.trim().replace(/[\s().-]/g, "");
+  return /^\+?[0-9]{7,15}$/.test(normalized) ? normalized : "";
+}
+
 export function normalizeInternationalPhone(value: string) {
   const normalized = value.trim().replace(/[ ()-]/g, "");
   return /^\+[1-9][0-9]{6,14}$/.test(normalized) ? normalized : "";

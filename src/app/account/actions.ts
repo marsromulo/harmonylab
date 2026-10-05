@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { setOrderWonderPayment } from "@/lib/checkout";
-import { normalizeEmail, normalizeHongKongPhone } from "@/lib/customer-fields";
+import { normalizeEmail, normalizePhone } from "@/lib/customer-fields";
 import { ensureCustomerProfile } from "@/lib/customers";
 import { getValidatedWebsiteReferralCode } from "@/lib/referrals";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
@@ -79,7 +79,8 @@ function getAddressPayload(formData: FormData) {
   const addressLine1 = getString(formData, "address_line1");
   const city = getString(formData, "city");
 
-  if (!firstName || !lastName || !addressLine1 || !city) {
+  if (!firstName || !lastName || !addressLine1 || !city ||
+    (getString(formData, "phone") && !normalizePhone(getString(formData, "phone")))) {
     return null;
   }
 
@@ -87,7 +88,7 @@ function getAddressPayload(formData: FormData) {
     label: getString(formData, "label") || null,
     first_name: firstName,
     last_name: lastName,
-    phone: normalizeHongKongPhone(getString(formData, "phone")) || null,
+    phone: normalizePhone(getString(formData, "phone")) || null,
     address_line1: addressLine1,
     address_line2: getString(formData, "address_line2") || null,
     city,
@@ -129,10 +130,11 @@ export async function registerCustomerAction(formData: FormData) {
   const email = normalizeEmail(getString(formData, "email"));
   const password = getString(formData, "password");
   const passwordConfirmation = getString(formData, "password_confirmation");
-  const phone = normalizeHongKongPhone(getString(formData, "phone"));
+  const phone = normalizePhone(getString(formData, "phone"));
   const fullName = [firstName, lastName].filter(Boolean).join(" ");
 
-  if (!firstName || !lastName || !email || password.length < 6) {
+  if (!firstName || !lastName || !email || password.length < 6 ||
+    (getString(formData, "phone") && !phone)) {
     redirect(getRedirectUrl(redirectPath, "error", "register-invalid"));
   }
 
