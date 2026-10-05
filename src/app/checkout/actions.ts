@@ -7,6 +7,7 @@ import {
   isCheckoutInventoryError,
   setOrderWonderPayment,
 } from "@/lib/checkout";
+import { getShippingCountry } from "@/lib/countries";
 import { normalizeEmail, normalizePhone } from "@/lib/customer-fields";
 import { ensureCustomerProfile, upsertDefaultCustomerAddress } from "@/lib/customers";
 import { validateMemberReferralCode } from "@/lib/referrals";
@@ -76,7 +77,7 @@ export async function createCheckoutOrderAction(formData: FormData) {
   const shippingCity = isPickup ? OFFICE_PICKUP.city : getString(formData, "shipping_city");
   const shippingRegion = isPickup ? OFFICE_PICKUP.region : getString(formData, "shipping_region");
   const shippingPostalCode = isPickup ? "" : getString(formData, "shipping_postal_code");
-  const shippingCountry = isPickup ? OFFICE_PICKUP.country : (isOutsideHK ? getString(formData, "shipping_country") : "Hong Kong");
+  const shippingCountry = isPickup ? OFFICE_PICKUP.country : (isOutsideHK ? getShippingCountry(getString(formData, "shipping_country")) : "Hong Kong");
   const deliveryNotes = getString(formData, "delivery_notes");
   const customerAddressId = getString(formData, "customer_address_id");
   const paymentMethod = getPaymentMethod(getString(formData, "payment_method"));
@@ -94,7 +95,6 @@ export async function createCheckoutOrderAction(formData: FormData) {
     (getString(formData, "phone") && !phone) ||
     ((user.is_anonymous || isPickup || isOutsideHK) && !phone) ||
     (isOutsideHK && (
-      !shippingPostalCode ||
       shippingPostalCode.length > 20 ||
       !shippingCountry ||
       shippingCountry.length > 100 ||

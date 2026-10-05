@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CustomerAddress, CustomerProfile } from "@/lib/customers";
+import { CountrySelect } from "@/components/CountrySelect";
 import { PhoneInput } from "@/components/PhoneInput";
 import { OFFICE_PICKUP } from "@/lib/pickup";
 
@@ -269,11 +270,10 @@ export function CheckoutAddressFields({
           {isOutsideHK ? (
             <>
               <label>
-                ZIP / Postal code
+                ZIP / Postal code (if applicable)
                 <input
                   name="shipping_postal_code"
                   autoComplete="postal-code"
-                  required
                   maxLength={20}
                   onChange={(event) => updateValue("postalCode", event.target.value)}
                   value={values.postalCode}
@@ -281,12 +281,9 @@ export function CheckoutAddressFields({
               </label>
               <label>
                 Country / Territory
-                <input
+                <CountrySelect
                   name="shipping_country"
-                  autoComplete="country-name"
-                  required
-                  maxLength={100}
-                  placeholder="Destination country / territory"
+                  excludeHongKong
                   onChange={(event) => updateValue("internationalCountry", event.target.value)}
                   value={values.internationalCountry}
                 />

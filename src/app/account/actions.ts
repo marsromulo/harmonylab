@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { setOrderWonderPayment } from "@/lib/checkout";
+import { getShippingCountry } from "@/lib/countries";
 import { normalizeEmail, normalizePhone } from "@/lib/customer-fields";
 import { ensureCustomerProfile } from "@/lib/customers";
 import { getValidatedWebsiteReferralCode } from "@/lib/referrals";
@@ -40,12 +41,6 @@ function getWonderPaymentMethod(value: string | null): WonderPaymentMethod {
   return "credit_card";
 }
 
-const supportedShippingCountries = new Set(["Hong Kong"]);
-
-function getShippingCountry(value: string) {
-  return supportedShippingCountries.has(value) ? value : "Hong Kong";
-}
-
 type PayableOrderRow = {
   id: string;
   order_number: string;
@@ -78,8 +73,9 @@ function getAddressPayload(formData: FormData) {
   const lastName = getString(formData, "last_name");
   const addressLine1 = getString(formData, "address_line1");
   const city = getString(formData, "city");
+  const country = getShippingCountry(getString(formData, "country"));
 
-  if (!firstName || !lastName || !addressLine1 || !city ||
+  if (!firstName || !lastName || !addressLine1 || !city || !country ||
     (getString(formData, "phone") && !normalizePhone(getString(formData, "phone")))) {
     return null;
   }
@@ -94,7 +90,7 @@ function getAddressPayload(formData: FormData) {
     city,
     region: getString(formData, "region") || null,
     postal_code: getString(formData, "postal_code") || null,
-    country: getShippingCountry(getString(formData, "country")),
+    country,
     is_default: formData.get("is_default") === "on",
   };
 }

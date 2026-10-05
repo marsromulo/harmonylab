@@ -1,3 +1,4 @@
+import { AddressFields } from "@/components/AddressFields";
 import { PhoneInput } from "@/components/PhoneInput";
 import Link from "next/link";
 import { connection } from "next/server";
@@ -12,7 +13,7 @@ import {
 } from "@/app/account/actions";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { getCurrentCustomer, getCustomerAddresses, type CustomerAddress } from "@/lib/customers";
+import { getCurrentCustomer, getCustomerAddresses } from "@/lib/customers";
 import {
   formatCustomerPaymentReference,
   formatOrderDate,
@@ -54,72 +55,6 @@ const successMessages: Record<string, string> = {
   registered: "Account created. You are signed in.",
 };
 
-const regionOptions = ["Hong Kong", "Kowloon", "New Territories"];
-const countryOptions = ["Hong Kong", "Philippines"];
-
-function AddressFields({ address, profile }: { address?: CustomerAddress; profile?: { firstName: string | null; lastName: string | null; phone: string | null } | null }) {
-  return (
-    <>
-      <label>
-        Label
-        <input name="label" placeholder="Home, office, etc." defaultValue={address?.label ?? ""} />
-      </label>
-      <div className="account-form-split">
-        <label>
-          First name
-          <input name="first_name" required defaultValue={address?.firstName ?? profile?.firstName ?? ""} />
-        </label>
-        <label>
-          Last name
-          <input name="last_name" required defaultValue={address?.lastName ?? profile?.lastName ?? ""} />
-        </label>
-      </div>
-      <label>
-        Phone
-        <PhoneInput defaultValue={address?.phone ?? profile?.phone ?? ""} />
-      </label>
-      <label>
-        Shipping address
-        <input name="address_line1" required defaultValue={address?.addressLine1 ?? ""} />
-      </label>
-      <label>
-        Address line 2
-        <input name="address_line2" defaultValue={address?.addressLine2 ?? ""} />
-      </label>
-      <div className="account-form-split">
-        <label>
-          District / City
-          <input name="city" required defaultValue={address?.city ?? ""} />
-        </label>
-        <label>
-          Region
-          <select name="region" defaultValue={address?.region ?? "Hong Kong"}>
-            {regionOptions.map((region) => (
-              <option key={region} value={region}>
-                {region}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <input name="postal_code" type="hidden" value={address?.postalCode ?? ""} />
-      <label>
-        Country
-        <select name="country" required defaultValue="Hong Kong">
-          {countryOptions.map((country) => (
-            <option key={country} value={country} disabled={country === "Philippines"}>
-              {country}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="account-checkbox-row">
-        <input name="is_default" type="checkbox" defaultChecked={address?.isDefault ?? false} />
-        Use as default shipping address
-      </label>
-    </>
-  );
-}
 
 function canPayOrder(order: { paymentStatus: string; status: string }) {
   return order.paymentStatus !== "paid" && !["paid", "cancelled", "refunded"].includes(order.status);

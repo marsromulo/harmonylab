@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
+import { createRequire } from "node:module";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+
+const require = createRequire(import.meta.url);
 
 function load(path) {
   const exports = {};
@@ -11,8 +16,12 @@ function load(path) {
   vm.runInNewContext(source, {
     exports,
     require: (name) => {
-      assert.equal(name, "react/jsx-runtime");
-      return { jsx: (type, props) => ({ type, props }) };
+      if (name.startsWith("@/")) {
+        const base = name.replace("@/", "src/");
+        return load(fs.existsSync(`${base}.tsx`) ? `${base}.tsx` : `${base}.ts`);
+      }
+      assert(["react", "react/jsx-runtime"].includes(name));
+      return require(name);
     },
   });
   return exports;
@@ -58,3 +67,27 @@ for (const shippingCents of [0, 5000, 18000]) {
   assert.equal(quote.shippingCents, shippingCents);
 }
 console.log("PASS: optional country codes, browser/server validation, and free pickup totals.");
+
+const { COUNTRY_OPTIONS, getShippingCountry } = load("src/lib/countries.ts");
+assert.equal(COUNTRY_OPTIONS.length, 249);
+assert.equal(new Set(COUNTRY_OPTIONS).size, COUNTRY_OPTIONS.length);
+for (const country of ["Hong Kong", "Philippines", "United States", "United Kingdom", "Australia", "Japan", "Singapore", "United Arab Emirates"]) {
+  assert.equal(getShippingCountry(country), country);
+}
+assert.equal(getShippingCountry("invalid country"), "");
+assert.equal(getShippingCountry(""), "");
+
+const { AddressFields } = load("src/components/AddressFields.tsx");
+for (const country of ["Philippines", "United States", "United Kingdom"]) {
+  const html = renderToStaticMarkup(createElement(AddressFields, {
+    address: { country, region: "Saved province", postalCode: "12345" },
+  }));
+  assert(html.includes(`value="${country}" selected=""`));
+  assert(html.includes('name="region"') && html.includes('value="Saved province"'));
+  assert(html.includes('name="postal_code"') && html.includes('value="12345"'));
+  assert(!html.includes("disabled="));
+}
+const hongKong = renderToStaticMarkup(createElement(AddressFields, {}));
+assert(hongKong.includes('<select name="region"'));
+assert(!hongKong.includes('name="postal_code"'));
+console.log("PASS: international country choices and saved address fields.");
