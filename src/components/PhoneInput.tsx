@@ -8,8 +8,8 @@ export function PhoneInput(props: InputHTMLAttributes<HTMLInputElement>) {
       type="tel"
       maxLength={40}
       pattern={"[+]?(?:[\\s\\(\\).\\-]*[0-9]){7,15}[\\s\\(\\).\\-]*"}
-      placeholder="Phone number (country code optional)"
-      title="Enter 7–15 digits, with an optional country code."
+      placeholder="Phone number (including country code)"
+      title="Enter 7–15 digits, including country code."
       {...props}
     />
   );
