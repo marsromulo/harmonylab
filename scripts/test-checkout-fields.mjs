@@ -8,8 +8,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 const require = createRequire(import.meta.url);
 
+const modules = new Map();
+
 function load(path) {
+  if (modules.has(path)) return modules.get(path);
   const exports = {};
+  modules.set(path, exports);
   const source = ts.transpileModule(fs.readFileSync(path, "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
@@ -91,3 +95,28 @@ const hongKong = renderToStaticMarkup(createElement(AddressFields, {}));
 assert(hongKong.includes('<select name="region"'));
 assert(!hongKong.includes('name="postal_code"'));
 console.log("PASS: international country choices and saved address fields.");
+
+const { CheckoutDeliveryProvider } = load("src/components/CheckoutDeliveryProvider.tsx");
+const { CheckoutAddressFields } = load("src/components/CheckoutAddressFields.tsx");
+const { CheckoutTotals } = load("src/components/CheckoutTotals.tsx");
+for (const method of ["delivery", "outside_hk", "pickup"]) {
+  const html = renderToStaticMarkup(createElement(CheckoutDeliveryProvider, {
+    initialMethod: method,
+  },
+  createElement(CheckoutAddressFields, { addresses: [], isGuest: false, profile: null }),
+  createElement(CheckoutTotals, {
+    currency: "HKD", formId: "test", itemCount: 2, subtotalCents: 46000,
+    initialQuote: { shippingCents: 5000, discountCents: 0, discountDetails: [], totalCents: 51000 },
+  })));
+  assert(html.includes(`name="delivery_method" checked="" value="${method}"`));
+  assert(html.includes("Office pickup — Free"));
+  if (method === "pickup") {
+    assert(html.includes("<span>Pickup</span><strong>Free</strong>"));
+    assert(html.includes("<span>Total</span><strong>HK$460.00</strong>"));
+    assert(!html.includes('name="shipping_address_line1"'));
+  } else {
+    assert(html.includes("<span>Shipping</span><strong>HK$50.00</strong>"));
+    assert(html.includes('name="shipping_address_line1"'));
+  }
+}
+console.log("PASS: shared delivery selection, free office pickup summary, and delivery address fields.");

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { loginCustomerAction, registerCustomerAction } from "@/app/account/actions";
 import { createCheckoutOrderAction } from "@/app/checkout/actions";
+import { CheckoutDeliveryProvider } from "@/components/CheckoutDeliveryProvider";
 import { CheckoutAddressFields } from "@/components/CheckoutAddressFields";
 import { CheckoutPaymentMethod } from "@/components/CheckoutPaymentMethod";
 import { CheckoutPlaceOrderButton } from "@/components/CheckoutPlaceOrderButton";
@@ -54,10 +55,11 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
     getValidatedWebsiteReferralCode(),
   ]);
   const addresses = profile ? await getCustomerAddresses(profile.id) : [];
+  const defaultCountry = (addresses.find((address) => address.isDefault) ?? addresses[0])?.country ?? "Hong Kong";
   const currency = cart.lines[0]?.product.currency ?? "HKD";
   const quote = cart.lines.length > 0
     ? await getCheckoutDiscountQuote({
-        country: (addresses.find((address) => address.isDefault) ?? addresses[0])?.country ?? "Hong Kong",
+        country: defaultCountry,
         currency,
         referralCode: profile?.referralCode || cookieReferralCode,
         subtotalCents: cart.subtotalCents,
@@ -166,60 +168,64 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
 
           </section>
         ) : (
-          <form action={createCheckoutOrderAction} className="checkout-layout" id="checkout-order-form">
-            <input name="checkout_mode" type="hidden" value={isGuestCheckout ? "guest" : "account"} />
-            <div className="checkout-form">
-              <h3>Delivery Details</h3>
-              {isGuestCheckout ? (
-                <p className="checkout-guest-note">
-                  Guest details are stored on this device and reused on your next checkout.
-                </p>
-              ) : null}
-              <CheckoutAddressFields
-                addresses={addresses}
-                emailErrorMessage={emailErrorMessage}
-                isGuest={isGuestCheckout}
-                profile={profile}
-              />
-            </div>
-
-            <div className="checkout-side">
-              <aside className="checkout-summary">
-                <h3>Order Summary</h3>
-                <div className="checkout-lines">
-                  {cart.lines.map((line) => (
-                    <article className="checkout-line" key={line.product.id}>
-                      <Image src={line.product.imageUrl} alt={line.product.name} width={64} height={64} />
-                      <div>
-                        <strong>{line.product.name}</strong>
-                        <span>
-                          {line.quantity} x {formatProductPrice(line.product)}
-                        </span>
-                      </div>
-                      <b>{formatProductPrice({ currency: line.product.currency, priceCents: line.lineTotalCents })}</b>
-                    </article>
-                  ))}
-                </div>
-                <CheckoutTotals
-                  currency={currency}
-                  formId="checkout-order-form"
-                  initialQuote={quote}
-                  itemCount={cart.itemCount}
-                  subtotalCents={cart.subtotalCents}
+          <CheckoutDeliveryProvider
+            initialMethod={defaultCountry !== "Hong Kong" ? "outside_hk" : "delivery"}
+          >
+            <form action={createCheckoutOrderAction} className="checkout-layout" id="checkout-order-form">
+              <input name="checkout_mode" type="hidden" value={isGuestCheckout ? "guest" : "account"} />
+              <div className="checkout-form">
+                <h3>Delivery Details</h3>
+                {isGuestCheckout ? (
+                  <p className="checkout-guest-note">
+                    Guest details are stored on this device and reused on your next checkout.
+                  </p>
+                ) : null}
+                <CheckoutAddressFields
+                  addresses={addresses}
+                  emailErrorMessage={emailErrorMessage}
+                  isGuest={isGuestCheckout}
+                  profile={profile}
                 />
-                <Link className="cart-clear" href="/cart">
-                  Edit cart
-                </Link>
-              </aside>
-              <CheckoutPaymentMethod formId="checkout-order-form" />
-              <ReferralCodeField
-                errorMessage={referralErrorMessage}
-                formId="checkout-order-form"
-                savedCode={profile?.referralCode || cookieReferralCode}
-              />
-              <CheckoutPlaceOrderButton />
-            </div>
-          </form>
+              </div>
+
+              <div className="checkout-side">
+                <aside className="checkout-summary">
+                  <h3>Order Summary</h3>
+                  <div className="checkout-lines">
+                    {cart.lines.map((line) => (
+                      <article className="checkout-line" key={line.product.id}>
+                        <Image src={line.product.imageUrl} alt={line.product.name} width={64} height={64} />
+                        <div>
+                          <strong>{line.product.name}</strong>
+                          <span>
+                            {line.quantity} x {formatProductPrice(line.product)}
+                          </span>
+                        </div>
+                        <b>{formatProductPrice({ currency: line.product.currency, priceCents: line.lineTotalCents })}</b>
+                      </article>
+                    ))}
+                  </div>
+                  <CheckoutTotals
+                    currency={currency}
+                    formId="checkout-order-form"
+                    initialQuote={quote}
+                    itemCount={cart.itemCount}
+                    subtotalCents={cart.subtotalCents}
+                  />
+                  <Link className="cart-clear" href="/cart">
+                    Edit cart
+                  </Link>
+                </aside>
+                <CheckoutPaymentMethod formId="checkout-order-form" />
+                <ReferralCodeField
+                  errorMessage={referralErrorMessage}
+                  formId="checkout-order-form"
+                  savedCode={profile?.referralCode || cookieReferralCode}
+                />
+                <CheckoutPlaceOrderButton />
+              </div>
+            </form>
+          </CheckoutDeliveryProvider>
         )}
       </main>
       <SiteFooter />

@@ -1654,6 +1654,45 @@ body {
   gap: 14px;
 }
 
+.checkout-delivery-options {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.checkout-delivery-options legend {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.checkout-form .checkout-delivery-options label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.checkout-delivery-options label:has(input:checked) {
+  border-color: var(--orange);
+  background: #faf6fc;
+}
+
+.checkout-form .checkout-delivery-options input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  accent-color: var(--orange);
+}
+
 .checkout-pickup-address {
   border: 1px solid var(--line);
   border-radius: 8px;

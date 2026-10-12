@@ -5,6 +5,7 @@ import type { CustomerAddress, CustomerProfile } from "@/lib/customers";
 import { CountrySelect } from "@/components/CountrySelect";
 import { PhoneInput } from "@/components/PhoneInput";
 import { OFFICE_PICKUP } from "@/lib/pickup";
+import { useCheckoutDelivery } from "@/components/CheckoutDeliveryProvider";
 
 const regionOptions = ["Hong Kong", "Kowloon", "New Territories"];
 
@@ -25,10 +26,7 @@ export function CheckoutAddressFields({
 }) {
   const defaultAddressId = addresses.find((address) => address.isDefault)?.id ?? addresses[0]?.id ?? "";
   const [selectedAddressId, setSelectedAddressId] = useState(defaultAddressId);
-  const defaultAddress = addresses.find((address) => address.id === defaultAddressId);
-  const [deliveryMethod, setDeliveryMethod] = useState(
-    defaultAddress && defaultAddress.country !== "Hong Kong" ? "outside_hk" : "delivery",
-  );
+  const { deliveryMethod, setDeliveryMethod } = useCheckoutDelivery();
   const isOutsideHK = deliveryMethod === "outside_hk";
   const isPickup = deliveryMethod === "pickup";
   const [guestHydrated, setGuestHydrated] = useState(!isGuest);
@@ -117,14 +115,25 @@ export function CheckoutAddressFields({
 
   return (
     <div className="checkout-address-fields">
-      <label>
-        Delivery method
-        <select name="delivery_method" value={deliveryMethod} onChange={(event) => setDeliveryMethod(event.target.value)}>
-          <option value="delivery">Delivery — Hong Kong</option>
-          <option value="outside_hk">Outside Hong Kong</option>
-          <option value="pickup">{OFFICE_PICKUP.label}</option>
-        </select>
-      </label>
+      <fieldset className="checkout-delivery-options">
+        <legend>Delivery method</legend>
+        {([
+          ["delivery", "Delivery — Hong Kong"],
+          ["outside_hk", "Outside Hong Kong"],
+          ["pickup", "Office pickup — Free"],
+        ] as const).map(([method, label]) => (
+          <label key={method}>
+            <input
+              type="radio"
+              name="delivery_method"
+              value={method}
+              checked={deliveryMethod === method}
+              onChange={() => setDeliveryMethod(method)}
+            />
+            <span>{label}</span>
+          </label>
+        ))}
+      </fieldset>
       {isPickup ? (
         <div className="checkout-pickup-address">
           <strong>{OFFICE_PICKUP.label}</strong>

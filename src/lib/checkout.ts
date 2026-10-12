@@ -133,6 +133,15 @@ export async function createCheckoutOrder(input: CreateCheckoutOrderInput) {
     throw new Error(`Unable to create order: ${error?.message ?? "Invalid response."}`);
   }
 
+  // Never create a payment session for a pickup order with a delivery charge.
+  if (
+    input.deliveryMethod === "pickup" &&
+    (order.shipping_cents !== 0 ||
+      order.total_cents !== input.expectedSubtotalCents - order.discount_cents)
+  ) {
+    throw new Error("Office pickup pricing is invalid. No payment has been started.");
+  }
+
   return {
     id: order.id,
     currency: order.currency,

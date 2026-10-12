@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { CheckoutDiscountQuote } from "@/lib/discounts";
 import { getPickupQuote } from "@/lib/pickup";
+import { useCheckoutDelivery } from "@/components/CheckoutDeliveryProvider";
 
 type CheckoutTotalsProps = {
   currency: string;
@@ -27,7 +28,8 @@ export function CheckoutTotals({
   subtotalCents,
 }: CheckoutTotalsProps) {
   const [quote, setQuote] = useState(initialQuote);
-  const [isPickup, setIsPickup] = useState(false);
+  const { deliveryMethod } = useCheckoutDelivery();
+  const isPickup = deliveryMethod === "pickup";
   const displayedQuote = isPickup ? getPickupQuote(quote) : quote;
 
   useEffect(() => {
@@ -45,11 +47,9 @@ export function CheckoutTotals({
       const referralInput = form.elements.namedItem("referral_code");
       const referralCode =
         referralInput instanceof HTMLInputElement ? referralInput.value : "";
-      const deliveryMethod = new FormData(form).get("delivery_method") ?? "delivery";
       controller?.abort();
       const requestController = new AbortController();
       controller = requestController;
-      setIsPickup(deliveryMethod === "pickup");
 
       try {
         const response = await fetch("/api/checkout/quote", {
@@ -76,13 +76,12 @@ export function CheckoutTotals({
       const target = event.target;
 
       if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement) ||
-        !["referral_code", "delivery_method", "customer_address_id"].includes(target.name)) {
+        target.name !== "referral_code") {
         return;
       }
 
       clearTimeout(timeoutId);
       controller?.abort();
-      setIsPickup(new FormData(form).get("delivery_method") === "pickup");
       timeoutId = setTimeout(updateQuote, 250);
     }
 
@@ -96,7 +95,7 @@ export function CheckoutTotals({
       clearTimeout(timeoutId);
       controller?.abort();
     };
-  }, [formId]);
+  }, [formId, deliveryMethod]);
 
   return (
     <>
