@@ -90,10 +90,14 @@ The live Hong Kong free-shipping minimum was corrected from HK$50 to HK$500 on
 
 - Hong Kong delivery below HK$500 subtotal: HK$50.
 - Hong Kong delivery at or above HK$500 subtotal: free.
-- Outside Hong Kong: HK$180 regardless of subtotal.
+- Macau (Macao): HK$50 regardless of subtotal.
+- USA and Canada: HK$350 regardless of subtotal.
+- Other destinations outside Hong Kong: HK$180 regardless of subtotal.
 - Harmony Lab office pickup: free.
 
-Admin Settings controls the free-shipping minimum and outside Hong Kong fee.
+Admin Settings controls the free-shipping minimum and default outside Hong Kong fee.
+Apply `supabase/033_destination_shipping_fees.sql` to add the Macau, USA, and Canada
+overrides to checkout quotes and order creation.
 These values are stored in Supabase; redeploying the website does not reset them
 or recalculate existing orders. Apply `supabase/032_outside_hong_kong_shipping.sql`
 when setting up a database before enabling outside Hong Kong checkout.

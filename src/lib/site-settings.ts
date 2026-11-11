@@ -70,7 +70,7 @@ export async function getAdminSiteSettings() {
     outsideShipping: {
       fee: getNumericSettingValue(outsideShippingData?.setting_value, DEFAULT_OUTSIDE_HK_SHIPPING_FEE),
       label: "Outside Hong Kong Shipping Fee (HK$)",
-      description: "Flat shipping fee for deliveries outside Hong Kong. Hong Kong free shipping does not apply.",
+      description: "Default fee for other destinations outside Hong Kong. Macau: HK$50; USA and Canada: HK$350. Hong Kong free shipping does not apply.",
     },
     freeShipping: {
       description:

@@ -8,6 +8,9 @@ type PaidOrderRewardRow = {
   referral_code_entered: string | null;
   referral_points_awarded: number;
   total_cents: number;
+  paid_at: string | null;
+  payment_status: string;
+  status: string;
 };
 
 function getAinettRewardConfiguration() {
@@ -32,7 +35,7 @@ export async function notifyAinettOrderReward(orderId: string) {
   const supabase = createSupabaseServiceRoleClient();
   const { data, error } = await supabase
     .from("orders")
-    .select("id,order_number,customer_name,referral_code_entered,referral_points_awarded,total_cents,currency")
+    .select("id,order_number,customer_name,referral_code_entered,referral_points_awarded,total_cents,currency,paid_at,payment_status,status")
     .eq("id", orderId)
     .maybeSingle();
 
@@ -44,6 +47,14 @@ export async function notifyAinettOrderReward(orderId: string) {
 
   if (!order?.referral_code_entered?.trim()) {
     return;
+  }
+
+  // Qualify using actual payment time, including delayed webhook deliveries.
+  if (order.payment_status !== "paid" || ["cancelled", "refunded"].includes(order.status)) {
+    return;
+  }
+  if (!order.paid_at || !Number.isFinite(Date.parse(order.paid_at))) {
+    throw new Error("Paid Harmony Lab order is missing a valid paid_at timestamp");
   }
 
   const response = await fetch(config.url, {
@@ -61,6 +72,9 @@ export async function notifyAinettOrderReward(orderId: string) {
       reward_amount: Number(order.referral_points_awarded ?? 0),
       total_amount: Number(order.total_cents ?? 0) / 100,
       currency: order.currency,
+      paid_at: order.paid_at,
+      payment_status: order.payment_status,
+      status: order.status,
     }),
   });
 
